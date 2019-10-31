@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#
+# Just remove the temporary keychain created at the start.
+
+security delete-keychains "${KEYCHAIN_NAME}"
+
+if [[ $? -ne 0 ]]; then
+  echo "WARNING: Unable to delete temporary keychain!"
+  # TODO: Obviously this needs to actually alert us directly if it happens.
+  # We'll find a way to do that.
+  echo "This can be extremely serious!  Let #eng-velocity know right away!"
+fi

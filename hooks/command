@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#
+# Now that we have a constructed codesigning environment, sign the code.
+
+
+artifact_dir=$(mktemp -d)
+pushd "${artifact_dir}"
+
+# Step 1: Retrieve the artifact to sign.
+# TODO: Bail out on any errors
+buildkite-agent artifact download "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}" .
+
+# Step 2: Sign it with the cert specified.
+# TODO: Validate the return code.
+codesign -s "${CODESIGN_IDENTITY}" "${target_binary}"
+
+# Step 3: Store the signed artifact in the bucket.
+# TODO: Handle errors
+buildkite-agent artifact upload "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}"
