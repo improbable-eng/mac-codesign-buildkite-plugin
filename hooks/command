@@ -2,18 +2,47 @@
 #
 # Now that we have a constructed codesigning environment, sign the code.
 
+[[ -n "${DEBUG-}" ]] && set -x
 
 artifact_dir=$(mktemp -d)
+### TESTING
+cp imp-ci "${artifact_dir}"
+### TESTING
 pushd "${artifact_dir}"
 
-# Step 1: Retrieve the artifact to sign.
-# TODO: Bail out on any errors
-buildkite-agent artifact download "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}" .
+# Retrieve the artifact to sign.
+# buildkite-agent artifact download "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}" .
+# retval=$?
+# if [[ "${retval}" -ne 0  ]]; then
+#   echo "Unable to download the specified artifact '${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}' with error code '${retval}'"
+#   exit 1
+# fi
+signing_target=$(ls -1 .)
 
-# Step 2: Sign it with the cert specified.
-# TODO: Validate the return code.
-codesign -s "${CODESIGN_IDENTITY}" "${target_binary}"
+# Unlock the keychain, since the setup set left it locked.
+# security unlock-keychain -p "${KEYCHAIN_PW}" codesign.keychain
 
-# Step 3: Store the signed artifact in the bucket.
-# TODO: Handle errors
-buildkite-agent artifact upload "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}"
+# Sign it with the cert specified.
+# codesign -s "${CODESIGN_IDENTITY}" "${signing_target}"
+codesign --verify --verbose --display --deep -s "${CODESIGN_IDENTITY}" ${signing_target}
+retval=$?
+if [[ "${retval}" -ne 0  ]]; then
+  echo "codesigning of target '${signing_target}' failed with error code '${retval}'"
+  exit 2
+fi
+
+# Validate that the target now has the expected signature.
+codesign --verify --deep --strict --verbose= "${signing_target}"
+retval=$?
+if [[ "${retval}" -ne 0  ]]; then
+  echo "Unable to verify that '${signing_target}' has a valid code signature: error code '${retval}'"
+  exit 3
+fi
+
+# Store the signed artifact back in the bucket.
+# buildkite-agent artifact upload "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}"
+# retval=$?
+# if [[ "${retval}" -ne 0  ]]; then
+#   echo "Unable to upload signed target '${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}' to artifact bucket with error code '${retval}'"
+#   exit 4
+# fi

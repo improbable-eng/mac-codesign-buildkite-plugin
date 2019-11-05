@@ -5,7 +5,6 @@ author: https://github.com/DoomGerbil
 # TODO: Discover and list requirements
 requirements:
   - imp-vault
-  - 
 # TODO: Flesh out configuration options
 configuration:
   properties:

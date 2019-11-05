@@ -2,7 +2,9 @@
 #
 # Just remove the temporary keychain created at the start.
 
-security delete-keychains "${KEYCHAIN_NAME}"
+[[ -n "${DEBUG-}" ]] && set -x
+
+security delete-keychain "${KEYCHAIN_NAME}"
 
 if [[ $? -ne 0 ]]; then
   echo "WARNING: Unable to delete temporary keychain!"

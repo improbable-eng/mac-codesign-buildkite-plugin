@@ -7,19 +7,27 @@
 # 3. Create a temporary keychain, import the signing cert into it, then lock the keychain with a rand pw.
 # 4. Export the codesigning identity ID and the keychain password so the rest of this job can sign with them.
 
+[[ -n "${DEBUG-}" ]] && set -x
+
 signing_cert_name="${BUILDKITE_PLUGIN_MAC_CODESIGN_SIGNING_CERT}"
 pw_secret="${BUILDKITE_PLUGIN_MAC_CODESIGN_SIGNING_CERT_PW_SECRET}"
 
-# TODO: Make this be a useful path.
-cert_store_root_path="/Users/sean/src/cert-root"
+cert_store_root_path="/Users/buildkite-agent/signing-certs"
 # TODO: Make this be the actual signing host, not my laptop.
 permitted_signing_host="sean-mac-c02xv3a8jgh6"
-codesign_keychain="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}:-codesign.keychain"
+codesign_keychain="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN:-codesign.keychain}"
 cert_pw=""
 signing_cert_path="${cert_store_root_path}/${signing_cert_name}"
 
 # Verify that this is only running on MacOS, via BuildKite, in proper CI, on our blessed agent.
 validate_environment() {
+  if [[ ! -r "${signing_cert_path}" ]]; then
+    echo "Unable to find/read specified signing cert ${signing_cert} in ${cert_store_root_path}"
+    exit 1
+  else
+    echo "Found cert!"
+  fi
+
   if [[ "${BUILDKITE}" != "true" ]]; then
     echo "Code signing can only be done as part of a BuildKite pipeline."
     exit 1
@@ -39,27 +47,18 @@ validate_environment() {
     echo "Code signing can only be performed on specific permitted agents."
     exit 1
   fi
-
-  if [[ ! -r "${signing_cert_path}" ]]; then
-    echo "Unable to read specified signing cert ${signing_cert} in ${cert_store_root_path}"
-    return 1
-  else
-    echo "Found cert!"
-    cat "${signing_cert_path}"
-  fi
 }
 
 # Retrieve the pw for the signing cert from Vault.
 # Required param: 
 #   name of the secret to retrieve from Vault
 retrieve_signing_cert_pw() {
-  cert_pw=$(imp-vault read-key --key="${1}")
+  cert_pw=$(imp-vault read-key --key="${1}" --field=token)
   if [[ $? -ne 0 || "${cert_pw}" == "" ]]; then
     echo "Unable to read secret for specified secret ${1}"
-    return 1
+    exit 1
   else
     echo "Successfully read secret from Vault"
-    echo "${cert_pw}"
   fi
 }
 
@@ -73,7 +72,7 @@ create_codesign_keychain() {
   
   # If the keychain already exists, warn the user and then delete it so we start fresh.
   security list-keychains | grep "${1}"
-  if [[ $? -ne 0  ]]; then
+  if [[ $? -eq 0  ]]; then
     echo "WARNING: The keychain ${1} already exists.  Removing it and creating a new empty keychain."
     security delete-keychain "${1}"
   fi
@@ -96,7 +95,7 @@ add_certificate_to_keychain() {
   export CODESIGN_IDENTITY="$(security find-identity codesign.keychain | grep -A1 "Valid identities" | tail -1 | awk '{print $2}')"
   
   # Lock it up, juuuuust in case.
-  security lock-keychain "${2}"
+  # security lock-keychain "${2}"
 }
 
 validate_environment
