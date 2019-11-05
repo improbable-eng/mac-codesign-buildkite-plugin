@@ -1,0 +1,23 @@
+---
+name: MacOS-Codesigner
+description: "Apply code signatures to MacOS binaries"
+author: https://github.com/DoomGerbil
+# TODO: Discover and list requirements
+requirements:
+  - imp-vault
+# TODO: Flesh out configuration options
+configuration:
+  properties:
+    input_artifact:
+      type: string
+    output_artifact:
+      type: string
+    signing_cert:
+      type: string
+    signing_cert_pw_secret:
+      type: string
+  required:
+    - input_artifact
+    - output_artifact
+    - signing_cert
+    - signing_cert_pw_secret

@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+#
+# Now that we have a constructed codesigning environment, sign the code.
+
+[[ -n "${DEBUG-}" ]] && set -x
+
+artifact_dir=$(mktemp -d)
+### TESTING
+cp imp-ci "${artifact_dir}"
+signing_target=$(ls -1 "${artifact_dir}")
+### TESTING
+pushd "${artifact_dir}"
+
+echo "Retrieving unsigned artifact"
+buildkite-agent artifact download "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}" .
+retval=$?
+if [[ "${retval}" -ne 0  ]]; then
+  echo "Unable to download the specified artifact '${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}' with error code '${retval}'"
+  exit 1
+fi
+
+# echo "Unlock the keychain"
+# security unlock-keychain -p "${KEYCHAIN_PW}" codesign.keychain
+
+echo "Signing target binary"
+codesign --verify --verbose --display --deep -s "${CODESIGN_IDENTITY}" ${signing_target}
+retval=$?
+if [[ "${retval}" -ne 0  ]]; then
+  echo "codesigning of target '${signing_target}' failed with error code '${retval}'"
+  exit 2
+fi
+
+echo "Validating signature"
+codesign --verify --deep --strict --verbose= "${signing_target}"
+retval=$?
+if [[ "${retval}" -ne 0  ]]; then
+  echo "Unable to verify that '${signing_target}' has a valid code signature: error code '${retval}'"
+  exit 3
+fi
+
+echo "Uploading signed artifact"
+buildkite-agent artifact upload "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}" "${output_artifact}"
+retval=$?
+if [[ "${retval}" -ne 0  ]]; then
+  echo "Unable to upload signed artifact '${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}' to artifact bucket with error code '${retval}'"
+  exit 4
+fi
