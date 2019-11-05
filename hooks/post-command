@@ -9,6 +9,6 @@ security delete-keychain "${KEYCHAIN_NAME}"
 if [[ $? -ne 0 ]]; then
   echo "WARNING: Unable to delete temporary keychain!"
   # TODO: Obviously this needs to actually alert us directly if it happens.
-  # We'll find a way to do that.
+  # We'll find a way to do that eventually.
   echo "This can be extremely serious!  Let #eng-velocity know right away!"
 fi

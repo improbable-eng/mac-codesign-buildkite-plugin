@@ -30,29 +30,29 @@ validate_environment() {
 
   if [[ "${BUILDKITE}" != "true" ]]; then
     echo "Code signing can only be done as part of a BuildKite pipeline."
-    exit 1
+    exit 2
   fi
 
   if [[ "${BUILDKITE_SOURCE}" == "local" ]]; then
     echo "Code signing is not allowed to be done locally."
-    exit 1
+    exit 3
   fi
 
   if [[ "${BUILDKITE_AGENT_META_DATA_PLATFORM}" != "macos" ]]; then
     echo "Code signing can only be performed on macos."
-    exit 1
+    exit 4
   fi
 
   if [[ "${BUILDKITE_AGENT_META_DATA_HOSTNAME}" != "${permitted_signing_host}" ]]; then
     echo "Code signing can only be performed on specific permitted agents."
-    exit 1
+    exit 5
   fi
 }
 
-# Retrieve the pw for the signing cert from Vault.
 # Required param: 
 #   name of the secret to retrieve from Vault
 retrieve_signing_cert_pw() {
+  echo "Retrieving password for signing cert"
   cert_pw=$(imp-vault read-key --key="${1}" --field=token)
   if [[ $? -ne 0 || "${cert_pw}" == "" ]]; then
     echo "Unable to read secret for specified secret ${1}"
@@ -62,10 +62,10 @@ retrieve_signing_cert_pw() {
   fi
 }
 
-# Set up the temporary codesigning keychain.
 # Required param: 
 #   name of the keychain to create
 create_codesign_keychain() {
+  echo "Setting up temporary codesigning keychain"
   # Randomly generate a secure pw for the keychain.
   export KEYCHAIN_NAME="${1}"
   export KEYCHAIN_PW="$(head /dev/urandom | LC_ALL=C tr -dc A-Za-z0-9 | head -c 16)"
@@ -82,12 +82,12 @@ create_codesign_keychain() {
   security list-keychains -d user -s login.keychain "${1}"
 }
 
-# Adds a certificate to a keychain
 # Required params: 
 #   Path to the certificate to be added.
 #   Name of the keychain to add to.
 #   Password to decrypt the certificate.
 add_certificate_to_keychain() {
+  echo "Adding cert to keychain"
   # '-T' allows codesign to use this cert without requiring further password input.
   security import "${1}" -k "${2}" -P "${cert_pw}" -T /usr/bin/codesign
   
