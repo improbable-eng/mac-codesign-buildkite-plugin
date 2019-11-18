@@ -1,29 +1,58 @@
 #!/usr/bin/env bash
 #
-# Now that we have a constructed codesigning environment, sign the code.
+# Now that we have a valid codesigning environment, sign the code.
+# 1. Retrieve the unsigned binary from the BK artifact store
+# 2. Retrieve the keychain unlock password from Vault
+# 3. Unlock the keychain
+# 4. Sign the binary and validate the signature
 
 [[ -n "${DEBUG-}" ]] && set -x
 
-artifact_dir=$(mktemp -d)
-### TESTING
-cp imp-ci "${artifact_dir}"
-signing_target=$(ls -1 "${artifact_dir}")
-### TESTING
-pushd "${artifact_dir}"
+target_artifact="${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}"
+codesign_keychain="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}"
+keychain_pw_path="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_SECRET}"
 
+# Fetch the artifact and put it in the right place
 echo "Retrieving unsigned artifact"
-buildkite-agent artifact download "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}" .
+signing_target="$(pwd)/$(ls ${target_artifact})"
+buildkite-agent artifact download "${target_artifact}" .
 retval=$?
 if [[ "${retval}" -ne 0  ]]; then
-  echo "Unable to download the specified artifact '${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}' with error code '${retval}'"
+  echo "Unable to download the specified artifact '${target_artifact}' with error code '${retval}'"
   exit 1
 fi
 
-# echo "Unlock the keychain"
-# security unlock-keychain -p "${KEYCHAIN_PW}" codesign.keychain
+# Remove this block once we're ready to start actually testing this in CI.
+### TESTING
+signing_target="$(pwd)/imp-ci"
+cp imp-ci-orig "${signing_target}"
+### TESTING
 
+# Get the keychain password from Vault, unlock the keychain, and find the identity to sign with
+echo "Retrieving password for signing cert"
+keychain_pw=$(imp-vault read-key --key="${pw_secret}" --field=token)
+if [[ $? -ne 0 || "${keychain_pw}" == "" ]]; then
+  echo "Unable to read secret for specified secret ${pw_secret}"
+  exit 1
+else
+  echo "Successfully read secret from Vault"
+fi
+
+echo "Unlock the keychain"
+security unlock-keychain -p "${keychain_pw}" "${codesign_keychain}"
+retval=$?
+if [[ "${retval}" -ne 0  ]]; then
+  echo "Unable to unlock the requested keychain '${codesign_keychain}' with error code '${retval}'"
+  exit 1
+fi
+
+echo "Find the code signing identity in the newly unlocked keychain"
+# This is awful, but we need to get some portion of the identity out of the keychain, and there's no clean way to do it.
+export CODESIGN_IDENTITY="$(security find-identity ${codesign_keychain} | grep -A1 "Valid identities" | tail -1 | awk '{print $2}')"
+
+# Sign the binary
 echo "Signing target binary"
-codesign --verify --verbose --display --deep -s "${CODESIGN_IDENTITY}" ${signing_target}
+codesign --verify --verbose --display --deep -s "${CODESIGN_IDENTITY}" "${signing_target}"
 retval=$?
 if [[ "${retval}" -ne 0  ]]; then
   echo "codesigning of target '${signing_target}' failed with error code '${retval}'"
@@ -36,12 +65,4 @@ retval=$?
 if [[ "${retval}" -ne 0  ]]; then
   echo "Unable to verify that '${signing_target}' has a valid code signature: error code '${retval}'"
   exit 3
-fi
-
-echo "Uploading signed artifact"
-buildkite-agent artifact upload "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}" "${output_artifact}"
-retval=$?
-if [[ "${retval}" -ne 0  ]]; then
-  echo "Unable to upload signed artifact '${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}' to artifact bucket with error code '${retval}'"
-  exit 4
 fi

@@ -5,19 +5,18 @@ author: https://github.com/DoomGerbil
 # TODO: Discover and list requirements
 requirements:
   - imp-vault
+  - security
+  - codesign
 # TODO: Flesh out configuration options
 configuration:
   properties:
     input_artifact:
       type: string
-    output_artifact:
+    keychain:
       type: string
-    signing_cert:
-      type: string
-    signing_cert_pw_secret:
+    keychain_secret:
       type: string
   required:
     - input_artifact
-    - output_artifact
-    - signing_cert
-    - signing_cert_pw_secret
+    - keychain
+    - keychain_secret

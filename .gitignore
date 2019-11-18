@@ -1,5 +1,6 @@
 .DS_Store
 *.p12
+.vscode
 
 # TODO: Remove once not testing
-imp-ci
+imp-ci*
