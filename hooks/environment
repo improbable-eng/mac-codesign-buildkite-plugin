@@ -11,7 +11,8 @@ permitted_signing_host="sean-mac-c02xv3a8jgh6"
 codesign_keychain="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}"
 pw_secret="${BUILDKITE_PLUGIN_MAC_CODESIGN_SIGNING_CERT_PW_SECRET}"
 
-if [[ ! security list-keychains ]]; then
+security list-keychains | grep "${codesign_keychain}" > /dev/null
+if [[ $? -ne 0 || -z "${codesign_keychain}" ]]; then
   echo "Unable to find/read specified signing keychain ${codesign_keychain}"
   exit 1
 fi
