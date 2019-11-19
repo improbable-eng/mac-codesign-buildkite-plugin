@@ -6,68 +6,132 @@
 # 3. Unlock the keychain
 # 4. Sign the binary and validate the signature
 
+DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
+
+# shellcheck source=lib/shared.sh
+source "${DIR}/../lib/shared.sh"
+
 [[ -n "${DEBUG-}" ]] && set -x
 
-target_artifact="${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}"
-codesign_keychain="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}"
 keychain_pw_name="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_PW_SECRET_NAME}"
-keychain_pw_helper="./helpers/fetch-keychain-pw.sh"
 script_root_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+default_keychain_pw_helper_script="${script_root_dir}/helpers/fetch-keychain-pw.sh"
 
-# Fetch the artifact and put it in the right place
-echo "Retrieving unsigned artifact"
-signing_target="$(pwd)/${target_artifact}"
-buildkite-agent artifact download "${target_artifact}" .
-retval=$?
-if [[ "${retval}" -ne 0  ]]; then
-  echo "Unable to download the specified artifact '${target_artifact}' with error code '${retval}'"
-  exit 1
-fi
-
-# Remove this block once we're ready to start actually testing this in CI.
-### TESTING
-signing_target="$(pwd)/imp-ci"
-cp imp-ci-orig "${signing_target}"
-### TESTING
-
-# If the unlock secret was not supplied as an env var, call the helper script to fetch it
-if [[ -z "${KEYCHAIN_PW}" ]]; then
-  "$(${script_root_dir}/${keychain_pw_helper} ${keychain_pw_name})"
+# Fetch the artifact and put it in the target dir
+func fetch_artifact() {
+  fetch_target="${1}"
+  dest_dir="${2}"
+  echo "Retrieving unsigned artifact ${fetch_target}"
+  buildkite-agent artifact download "${fetch_target}" "${dest_dir}"
   retval=$?
-  if [[ "${retval}" -ne 0 || -z "${KEYCHAIN_PW}"  ]]; then
-    echo "Unable the fetch the secret using the helper script with error code '${retval}'"
+  if [[ "${retval}" -ne 0  ]]; then
+    echo "Unable to download the specified artifact '${fetch_target}' with error code '${retval}'"
     exit 1
   fi
-fi
+
+  signing_target="$(pwd)/${fetch_target}"
+
+  # Remove this block once we're ready to start actually testing this in CI.
+  ### TESTING
+  signing_target="$(pwd)/imp-ci"
+  cp imp-ci-orig "${signing_target}"
+  ### TESTING
+
+  return "${signing_target}"
+}
+
+# If the unlock secret was not supplied as an env var, call the helper script to fetch it
+func get_keychain_pw() {
+  helper_script_path="${1}"
+  helper_script_arg="${2}"
+  if [[ -z "${KEYCHAIN_PW}" ]]; then
+    "$(${helper_script_path} ${helper_script_arg})"
+    retval=$?
+    if [[ "${retval}" -ne 0 || -z "${KEYCHAIN_PW}"  ]]; then
+      echo "Unable the fetch the secret using the helper script: error code '${retval}'"
+      exit 1
+    fi
+  fi
+
+  return "${KEYCHAIN_PW}"
+}
 
 # Now unlock the keychain and find the identity to sign with
-echo "Unlock the keychain"
-security unlock-keychain -p "${KEYCHAIN_PW}" "${codesign_keychain}"
-retval=$?
-if [[ "${retval}" -ne 0  ]]; then
-  echo "Unable to unlock the requested keychain '${codesign_keychain}' with error code '${retval}'"
-  exit 1
-fi
+func unlock_keychain() {
+  echo "Unlock the keychain"
+  keychain_name=${1}
+  keychain_pw=${2}
+  security unlock-keychain -p "${keychain_pw}" "${keychain_name}"
+  retval=$?
+  if [[ "${retval}" -ne 0  ]]; then
+    echo "Unable to unlock the requested keychain '${keychain_name}': error code '${retval}'"
+    exit 1
+  fi
+}
 
-echo "Find the code signing identity in the newly unlocked keychain"
-# This is awful, but we need to get some portion of the identity out of the keychain, and there's no clean way to do it.
-export CODESIGN_IDENTITY="$(security find-identity ${codesign_keychain} | grep -A1 "Valid identities" | tail -1 | awk '{print $2}')"
+func get_signing_identity() {
+  echo "Find the code signing identity in the newly unlocked keychain"
+  # This is awful, but we need to get some portion of the identity out of the keychain, and there's no clean way to do it.
+  export CODESIGN_IDENTITY="$(security find-identity ${codesign_keychain} | grep -A1 "Valid identities" | tail -1 | awk '{print $2}')"
+}
 
 # Sign the binary
-echo "Signing target binary"
-codesign --verify --verbose --display --deep -s "${CODESIGN_IDENTITY}" "${signing_target}"
-retval=$?
-if [[ "${retval}" -ne 0  ]]; then
-  echo "codesigning of target '${signing_target}' failed with error code '${retval}'"
-  exit 2
-fi
+func sign_and_validate() {
+  echo "Signing target binary"
+  codesign --verify --verbose --display --deep -s "${CODESIGN_IDENTITY}" "${signing_target}"
+  retval=$?
+  if [[ "${retval}" -ne 0  ]]; then
+    echo "codesigning of target '${signing_target}' failed: error code '${retval}'"
+    exit 2
+  fi
 
-echo "Validating signature"
-codesign --verify --deep --strict --verbose= "${signing_target}"
-retval=$?
-if [[ "${retval}" -ne 0  ]]; then
-  echo "Unable to verify that '${signing_target}' has a valid code signature: error code '${retval}'"
-  exit 3
-fi
+  echo "Validating signature"
+  codesign --verify --deep --strict --verbose= "${signing_target}"
+  retval=$?
+  if [[ "${retval}" -ne 0  ]]; then
+    echo "Unable to verify that '${signing_target}' has a valid code signature: error code '${retval}'"
+    exit 3
+  fi
 
-mv "${signing_target}" "${signing_target}_signed"
+  # Copy the signed binary to where it's expected to be for artifact uploading.
+  cp "${signing_target}" "${signing_target}_signed"
+}
+
+func upload_artifact() {
+  signed_artifact="${1}"
+  buildkite-agent artifact upload "${signed_artifact}"
+  retval=$?
+  if [[ "${retval}" -ne 0  ]]; then
+    echo "Unable to upload ${signed_artifact} to BuildKite: error code '${retval}'"
+    exit 4
+  fi
+}
+
+# If the user set a secret-fetch helper script, use it, otherwise use the default.
+func find_keychain_pw_helper_script() {
+  if [[ -n "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_PW_HELPER_SCRIPT}"]]; then
+    script="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_PW_HELPER_SCRIPT}"
+  else
+    script="${default_keychain_pw_helper_script}"
+  fi
+
+  return "${script}"
+}
+
+## Main execution flow
+
+# Set everything up to be able to sign.
+keychain_pw_helper_script=$(find_keychain_pw_helper_script)
+keychain_pw=$(get_keychain_pw "${keychain_pw_helper_script}" "${keychain_pw_name}")
+unlock_keychain "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}" "${KEYCHAIN_PW}"
+get_signing_identity "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}"
+
+# Put all of the artifacts in a tempdir
+artifacts_dir=$(mktemp -d)
+
+# Download and sign each requested artifact
+for artifact in $(plugin_read_list INPUT_ARTIFACTS) ; do
+  unsigned_artifact="$(fetch_artifact ${artifact} ${artifacts_dir})"
+  signed_artifact="$(sign_and_validate "${unsigned_artifact}")"
+  upload_artifact "${unsigned_artifact}"
+done
