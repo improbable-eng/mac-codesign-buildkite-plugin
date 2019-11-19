@@ -12,7 +12,7 @@ security lock-keychain "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}"
 
 if [[ $? -ne 0 ]]; then
   # TODO: This needs to be able to actually alert us directly if it happens.
-  # We'll find a way to do that eventually.
   echo "ERROR: Unable to lock codesigning keychain!"
   echo "This can be extremely serious!  Let #eng-velocity know right away!"
+  exit 5 # Arbitrary error exit code for this specific condition.
 fi

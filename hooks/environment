@@ -28,7 +28,7 @@ if [[ "${BUILDKITE_SOURCE}" == "local" ]]; then
 fi
 
 if [[ "${BUILDKITE_AGENT_META_DATA_PLATFORM}" != "macos" ]]; then
-  echo "Code signing can only be performed on macos."
+  echo "Code signing of macOS binaries can only be performed on macos."
   exit 4
 fi
 

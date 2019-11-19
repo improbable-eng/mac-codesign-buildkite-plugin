@@ -10,11 +10,13 @@
 
 target_artifact="${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}"
 codesign_keychain="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}"
-keychain_pw_path="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_SECRET}"
+keychain_pw_name="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_PW_SECRET_NAME}"
+keychain_pw_helper="./helpers/fetch-keychain-pw.sh"
+script_root_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # Fetch the artifact and put it in the right place
 echo "Retrieving unsigned artifact"
-signing_target="$(pwd)/$(ls ${target_artifact})"
+signing_target="$(pwd)/${target_artifact}"
 buildkite-agent artifact download "${target_artifact}" .
 retval=$?
 if [[ "${retval}" -ne 0  ]]; then
@@ -28,18 +30,19 @@ signing_target="$(pwd)/imp-ci"
 cp imp-ci-orig "${signing_target}"
 ### TESTING
 
-# Get the keychain password from Vault, unlock the keychain, and find the identity to sign with
-echo "Retrieving password for signing cert"
-keychain_pw=$(imp-vault read-key --key="${pw_secret}" --field=token)
-if [[ $? -ne 0 || "${keychain_pw}" == "" ]]; then
-  echo "Unable to read secret for specified secret ${pw_secret}"
-  exit 1
-else
-  echo "Successfully read secret from Vault"
+# If the unlock secret was not supplied as an env var, call the helper script to fetch it
+if [[ -z "${KEYCHAIN_PW}" ]]; then
+  "$(${script_root_dir}/${keychain_pw_helper} ${keychain_pw_name})"
+  retval=$?
+  if [[ "${retval}" -ne 0 || -z "${KEYCHAIN_PW}"  ]]; then
+    echo "Unable the fetch the secret using the helper script with error code '${retval}'"
+    exit 1
+  fi
 fi
 
+# Now unlock the keychain and find the identity to sign with
 echo "Unlock the keychain"
-security unlock-keychain -p "${keychain_pw}" "${codesign_keychain}"
+security unlock-keychain -p "${KEYCHAIN_PW}" "${codesign_keychain}"
 retval=$?
 if [[ "${retval}" -ne 0  ]]; then
   echo "Unable to unlock the requested keychain '${codesign_keychain}' with error code '${retval}'"
@@ -66,3 +69,5 @@ if [[ "${retval}" -ne 0  ]]; then
   echo "Unable to verify that '${signing_target}' has a valid code signature: error code '${retval}'"
   exit 3
 fi
+
+mv "${signing_target}" "${signing_target}_signed"
