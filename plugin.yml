@@ -4,20 +4,18 @@ description: "Apply code signatures to MacOS binaries"
 author: https://github.com/DoomGerbil
 # TODO: Discover and list requirements
 requirements:
-  - imp-vault
-# TODO: Flesh out configuration options
+  - security
+  - codesign
 configuration:
   properties:
-    input_artifact:
+    input_artifacts:
+      type: [ string, array ]
+    keychain:
       type: string
-    output_artifact:
+    keychain_pw_secret_name:
       type: string
-    signing_cert:
-      type: string
-    signing_cert_pw_secret:
+    keychain_pw_helper_script:
       type: string
   required:
     - input_artifact
-    - output_artifact
-    - signing_cert
-    - signing_cert_pw_secret
+    - keychain

@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 #
-# Just remove the temporary keychain created at the start.
+# Lock the keychain we used to sign things.
 
 [[ -n "${DEBUG-}" ]] && set -x
 
-security delete-keychain "${KEYCHAIN_NAME}"
+# Clean up the unsigned artifact
+rm -f "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}"
+
+# And lock the door behind us
+security lock-keychain "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}"
 
 if [[ $? -ne 0 ]]; then
-  echo "WARNING: Unable to delete temporary keychain!"
-  # TODO: Obviously this needs to actually alert us directly if it happens.
-  # We'll find a way to do that eventually.
+  # TODO: This needs to be able to actually alert us directly if it happens.
+  echo "ERROR: Unable to lock codesigning keychain!"
   echo "This can be extremely serious!  Let #eng-velocity know right away!"
+  exit 5 # Arbitrary error exit code for this specific condition.
 fi
