@@ -20,9 +20,6 @@ Using the `KEYCHAIN_PW` env var:
   command: "" # No command needed here, since the `command` hook does the work.
   agents:
     - "queue=macos-codesigner"
-  artifact_paths:
-    - "thing.bin_signed"
-    - "another-thing.bin_signed"
   plugins:
     - mac-codesign#v1.0.0:
         input_artifacts:
@@ -40,9 +37,6 @@ Using the default Improbable secret-fetching script with `keychain_pw_secret_nam
   command: "" # No command needed here, since the `command` hook does the work.
   agents:
     - "queue=macos-codesigner"
-  artifact_paths:
-    - "thing.bin_signed"
-    - "another-thing.bin_signed"
   plugins:
     - mac-codesign#v1.0.0:
         input_artifacts:
@@ -59,9 +53,6 @@ Using a custom secret-fetching script:
   command: "" # No command needed here, since the `command` hook does the work.
   agents:
     - "queue=macos-codesigner"
-  artifact_paths:
-    - "thing.bin_signed"
-    - "another-thing.bin_signed"
   plugins:
     - mac-codesign#v1.0.0:
         input_artifacts:
@@ -86,6 +77,7 @@ This plugin defines hooks for `environment`, `checkout`, `command`, and `post-co
   - Unlocks the signing keychain.
   - Signs the binary using the cert in the now-unlocked keychain.
   - Validates the signature.
+  - Uploads the signed artifact back to BuildKite
 
 - `post-command` just locks the keychain, regardless of how the rest of the job went.
 
