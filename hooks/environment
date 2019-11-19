@@ -23,24 +23,19 @@ if [[ "${BUILDKITE}" != "true" ]]; then
   exit 2
 fi
 
+# Commented out temporarily for local testing.
 if [[ "${BUILDKITE_SOURCE}" == "local" ]]; then
   echo "Code signing is not allowed to be done locally."
-  # Commented out temporarily for local testing.
-  # exit 3
+  exit 3
 fi
 
-# Not sure why thuis doesn't work in bk local.
+# Not sure why these don't work in bk local.
 # if [[ "${BUILDKITE_AGENT_META_DATA_PLATFORM}" != "macos" ]]; then
 #   echo "Code signing of macOS binaries can only be performed on macos, not ${BUILDKITE_AGENT_META_DATA_PLATFORM}."
 #   exit 4
 # fi
 
-if [[ "$(uname)" != "Darwin" ]]; then
-  echo "Code signing of macOS binaries can only be performed on macos, not $(uname)."
-  exit 4
-fi
-
-if [[ "${BUILDKITE_AGENT_META_DATA_HOSTNAME}" != "${permitted_signing_host}" ]]; then
-  echo "Host ${BUILDKITE_AGENT_META_DATA_HOSTNAME} is not permitted to do code-signing."
-  exit 5
-fi
+# if [[ "${BUILDKITE_AGENT_META_DATA_HOSTNAME}" != "${permitted_signing_host}" ]]; then
+#   echo "Host ${BUILDKITE_AGENT_META_DATA_HOSTNAME} is not permitted to do code-signing."
+#   exit 5
+# fi
