@@ -29,8 +29,14 @@ if [[ "${BUILDKITE_SOURCE}" == "local" ]]; then
   # exit 3
 fi
 
-if [[ "${BUILDKITE_AGENT_META_DATA_PLATFORM}" != "macos" ]]; then
-  echo "Code signing of macOS binaries can only be performed on macos, not ${BUILDKITE_AGENT_META_DATA_PLATFORM}."
+# Not sure why thuis doesn't work in bk local.
+# if [[ "${BUILDKITE_AGENT_META_DATA_PLATFORM}" != "macos" ]]; then
+#   echo "Code signing of macOS binaries can only be performed on macos, not ${BUILDKITE_AGENT_META_DATA_PLATFORM}."
+#   exit 4
+# fi
+
+if [[ "$(uname)" != "Darwin" ]]; then
+  echo "Code signing of macOS binaries can only be performed on macos, not $(uname)."
   exit 4
 fi
 
