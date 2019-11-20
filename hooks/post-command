@@ -8,6 +8,7 @@
 rm -f "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}"
 
 # And lock the door behind us
+echo "--- Locking signing keychain"
 security lock-keychain "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}"
 
 if [[ $? -ne 0 ]]; then

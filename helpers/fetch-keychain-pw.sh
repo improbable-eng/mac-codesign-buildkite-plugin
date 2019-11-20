@@ -4,6 +4,9 @@
 # using our imp-ci tool and sticks it in an ENV var for consumption
 
 # All decryption password secrets must live under this path
+
+[[ -n "${DEBUG-}" ]] && set -x
+
 keychain_pw_root="secret/sync.v1/dev-workflow/production-buildkite/buildkite-agents/cert-decryption-password/"
 keychain_pw_name="${1}"
 keychain_pw_path="${keychain_pw_root}/${keychain_pw_name}"
@@ -14,5 +17,5 @@ if [[ $? -ne 0 || "${keychain_pw}" == "" ]]; then
   echo "Unable to read specified secret ${pw_secret}"
   exit 1
 else
-  export KEYCHAIN_PW="${keychain_pw}"
+  echo "${keychain_pw}"
 fi
