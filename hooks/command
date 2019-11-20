@@ -30,15 +30,7 @@ function fetch_artifact {
     exit 1
   fi
 
-  signing_target="$(pwd)/${fetch_target}"
-
-  # Remove this block once we're ready to start actually testing this in CI.
-  ### TESTING
-  # signing_target="$(pwd)/imp-ci"
-  # cp imp-ci-orig "${signing_target}"
-  ### TESTING
-
-  echo "${signing_target}"
+  echo "${dest_dir}/${fetch_target}"
 }
 
 # If the unlock secret was not supplied as an env var, call the helper script to fetch it
@@ -59,7 +51,6 @@ function get_keychain_pw {
 
 # Now unlock the keychain and find the identity to sign with
 function unlock_keychain {
-  echo "--- Unlocking the keychain"
   keychain_name=${1}
   keychain_pw=${2}
   security unlock-keychain -p "${keychain_pw}" "${keychain_name}"
@@ -99,7 +90,6 @@ function sign_and_validate {
 }
 
 function upload_artifact {
-  echo "--- Uploading signed artifact"
   signed_artifact="${1}"
   buildkite-agent artifact upload "${signed_artifact}"
   retval=$?
@@ -126,7 +116,10 @@ function find_keychain_pw_helper_script {
 echo "--- Getting the password to unlock the keychain"
 keychain_pw_helper_script=$(find_keychain_pw_helper_script)
 keychain_pw=$(get_keychain_pw "${keychain_pw_helper_script}" "${keychain_pw_name}")
+
+echo "--- Unlocking the keychain"
 unlock_keychain "${codesigning_keychain}" "${keychain_pw}"
+
 echo "--- Finding the code signing identity in the unlocked keychain"
 identity=$(get_signing_identity "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}")
 
@@ -137,7 +130,10 @@ artifacts_dir=$(mktemp -d)
 for artifact in $(plugin_read_list INPUT_ARTIFACTS) ; do
   echo "--- Retrieving unsigned artifact ${fetch_target}"
   unsigned_artifact="$(fetch_artifact ${artifact} ${artifacts_dir})"
+
   echo "--- Signing target binary"
   signed_artifact="$(sign_and_validate "${unsigned_artifact}" "${identity}")"
+
+  echo "--- Uploading signed artifact"
   upload_artifact "${unsigned_artifact}"
 done
