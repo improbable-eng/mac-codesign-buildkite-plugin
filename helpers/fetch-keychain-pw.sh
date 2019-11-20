@@ -9,8 +9,7 @@ keychain_pw_name="${1}"
 keychain_pw_path="${keychain_pw_root}/${keychain_pw_name}"
 
 # Get the keychain password from Vault
-echo "Retrieving password for signing cert"
-keychain_pw=$(imp-vault read-key --key="${pw_secret}" --field=token)
+keychain_pw=$(imp-vault read-key --key="${keychain_pw_path}" --field=token)
 if [[ $? -ne 0 || "${keychain_pw}" == "" ]]; then
   echo "Unable to read specified secret ${pw_secret}"
   exit 1
