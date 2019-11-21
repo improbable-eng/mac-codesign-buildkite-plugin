@@ -86,7 +86,9 @@ function sign_and_validate {
   fi
 
   # Copy the signed binary to where it's expected to be for artifact uploading.
-  cp "${signing_target}" "${signing_target}_signed"
+  signed_artifact="${signing_target}_signed"
+  cp "${signing_target}" "${signed_artifact}"
+  echo "${signed_artifact}"
 }
 
 function upload_artifact {
@@ -128,17 +130,17 @@ echo "--- Finding the code signing identity in the unlocked keychain"
 identity=$(get_signing_identity "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}")
 
 # Sign things in a local dir so the uploaded artifacts don't have a weird path
-artifacts_dir="$(pwd)/signed"
-rm -rf "${artifacts_dir}" && mkdir -p "${artifacts_dir}"
+relative_artifacts_dir="$(pwd)/signed"
+rm -rf "${relative_artifacts_dir}" && mkdir -p "${relative_artifacts_dir}"
 
 # Download and sign each requested artifact
 for artifact in $(plugin_read_list INPUT_ARTIFACTS) ; do
   echo "--- ${artifact}: retrieving unsigned artifact"
-  unsigned_artifact="$(fetch_artifact ${artifact} ${artifacts_dir})"
+  unsigned_artifact="$(fetch_artifact ${artifact} ${relative_artifacts_dir})"
 
   echo "--- ${artifact}: signing binary"
   signed_artifact="$(sign_and_validate "${unsigned_artifact}" "${identity}")"
 
   echo "--- ${artifact}: uploading signed artifact"
-  upload_artifact "${unsigned_artifact}"
+  upload_artifact "${signed_artifact}"
 done
