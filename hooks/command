@@ -98,10 +98,7 @@ function sign_and_validate {
     exit 5
   fi
 
-  # Copy the signed binary to where it's expected to be for artifact uploading.
-  signed_artifact="${signing_target}_signed"
-  cp "${signing_target}" "${signed_artifact}"
-  echo "${signed_artifact}"
+  echo "${signing_target}"
 }
 
 # Convenience wrapper to upload our signed artifact to BuildKite
@@ -158,10 +155,13 @@ for artifact in $(plugin_read_list INPUT_ARTIFACTS) ; do
   # "signed/$BINARY_NAME"
   # Otherwise it gets the fully-qualified path to the artifact.  More like:
   # "usr/local/var/buildkite-agent/builds/macos-codesigner/improbable/platform-mac-codesign-test/signed/imp-ci"
-  echo "--- ${signed_artifact}: uploading signed artifact"
   signed_dir="$(dirname ${signed_artifact})/.."
-  signed_artifact="$(basename ${signed_artifact})/.."
+  signed_file="$(basename ${signed_artifact})/.."
+  
+  echo "--- ${signed_file}: uploading signed artifact"
+  # Change to the directory containing "signed/", where the artifacts live.
+  # This way, the uploaded artifacts in BK will all be named "signed/$BINARY_NAME"
   pushd "${signed_dir}/.."
-  upload_artifact "${signed_dir_fragment}/${signed_artifact}"
+  upload_artifact "${signed_dir_fragment}/${signed_file}"
   popd
 done
