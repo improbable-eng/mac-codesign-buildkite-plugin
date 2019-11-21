@@ -91,7 +91,7 @@ function sign_and_validate {
 
 function upload_artifact {
   signed_artifact="${1}"
-  pushd "$(basename ${signed_artifact})"
+  pushd "$(dirname ${signed_artifact})"
   buildkite-agent artifact upload "${signed_artifact}"
   retval=$?
   popd
