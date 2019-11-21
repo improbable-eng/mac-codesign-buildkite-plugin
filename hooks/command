@@ -91,8 +91,10 @@ function sign_and_validate {
 
 function upload_artifact {
   signed_artifact="${1}"
+  pushd "$(basename ${signed_artifact})"
   buildkite-agent artifact upload "${signed_artifact}"
   retval=$?
+  popd
   if [[ "${retval}" -ne 0  ]]; then
     echo "Unable to upload ${signed_artifact} to BuildKite: error code '${retval}'"
     exit 6
