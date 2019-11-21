@@ -92,7 +92,8 @@ function sign_and_validate {
 function upload_artifact {
   signed_artifact="${1}"
   # The pushd/popd/dirname/basename shenanigans are so the artifact path in BK is friendlier
-  pushd $(dirname ${signed_artifact})
+  # eg "signed/$BINARY_NAME"
+  pushd "$(dirname ${signed_artifact})/.."
   buildkite-agent artifact upload $(basename ${signed_artifact})
   retval=$?
   popd
