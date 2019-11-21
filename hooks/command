@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
-# Now that we have a valid codesigning environment, sign the code.
+# Actually signs the package.
 # 1. Retrieve the unsigned binary from the BK artifact store
-# 2. Retrieve the keychain unlock password from Vault
+# 2. Retrieve the keychain unlock password
 # 3. Unlock the keychain
 # 4. Sign the binary and validate the signature
+# 5. Upload the binary as a BuildKite artifact
 
 set -e -o pipefail
 [[ -n "${DEBUG-}" ]] && set -x
 
 DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
-
 # shellcheck source=lib/shared.sh
 source "${DIR}/../lib/shared.sh"
 
@@ -145,20 +145,22 @@ rm -rf "${signed_dir_fragment}" && mkdir -p "${signed_dir_fragment}"
 
 # Download and sign each requested artifact
 for artifact in $(plugin_read_list INPUT_ARTIFACTS) ; do
-  echo "--- ${artifact}: retrieving unsigned artifact"
+  echo "--- Signing ${artifact}"
+
+  echo "${artifact}: retrieving unsigned artifact"
   unsigned_artifact="$(fetch_artifact ${artifact} ${relative_artifacts_dir})"
 
-  echo "--- ${artifact}: signing binary"
+  echo "${artifact}: signing binary"
   signed_artifact="$(sign_and_validate "${unsigned_artifact}" "${identity}")"
 
   # The pushd/popd/dirname/basename shenanigans are so the artifact path in BK is friendlier.  EG - 
   # "signed/$BINARY_NAME"
-  # Otherwise it gets the fully-qualified path to the artifact.  More like:
+  # Otherwise it gets the fully-qualified path to the artifact, like:
   # "usr/local/var/buildkite-agent/builds/macos-codesigner/improbable/platform-mac-codesign-test/signed/imp-ci"
   signed_dir="$(dirname ${signed_artifact})"
   signed_file="$(basename ${signed_artifact})"
   
-  echo "--- ${signed_file}: uploading signed artifact"
+  echo "${signed_file}: uploading signed artifact"
   # Change to the directory containing "signed/", where the artifacts live.
   # This way, the uploaded artifacts in BK will all be named "signed/$BINARY_NAME"
   pushd "${signed_dir}/.."

@@ -15,5 +15,5 @@ if [[ $? -ne 0 ]]; then
   # TODO: This needs to be able to actually alert us directly if it happens.
   echo "ERROR: Unable to lock codesigning keychain!"
   echo "This can be extremely serious!  Let #eng-velocity know right away!"
-  exit 5 # Arbitrary error exit code for this specific condition.
+  exit 15 # Arbitrary error exit code for this specific condition.
 fi
