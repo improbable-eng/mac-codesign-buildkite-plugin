@@ -1,10 +1,29 @@
 # MacOS Code Signing Plugin
 
-This allows us to perform the actual codesigning steps necessary to release MacOS software.
+## Overview
+
+This plugin performs the actual codesigning steps necessary to release MacOS software.
 
 See [here](https://brevi.link/design-code-signing) for the general design that this fits into.
+TODO(@DoomGerbil): Make this design doc visible to people outside of Improbable.
 
-## Overview
+### Features
+
+- Signs binaries, dmgs, pkgs, or apps for MacOS.
+- One or more targets can be specified for signing at once.
+- Automatic unlocking/locking of signing keychains.
+- Secrets for unlocking signing certs can be supplied as env vars or fetched from external secret storage (eg Vault).
+- Prevents signing jobs from being run on unapproved machines, or using unsafe workflows.
+
+### Limitations/Caveats
+
+- This does not presently do any notarization.
+- No support for iOS signing workflows.
+- You must have the certificate to use already set up on the agent.
+- Each certificate and matching private key should be in a separate keychain on the agent.
+  - This requires that you have _used the certificate_ to sign a binary once, on the agent.
+  - And selected the "Approve Always" button when macos presented a keychain access dialog.
+    - Otherwise macos requires human intervention to use the key to sign.
 
 This plugin relies upon the build agent already having the necessary keychains created on the machine.
 
@@ -17,14 +36,12 @@ Using the `KEYCHAIN_PW` env var:
 
 ```yaml
 - label: "sign-macos-binary"
-  command: "" # No command needed here, since the `command` hook does the work.
   agents:
     - "queue=macos-codesigner"
   plugins:
     - mac-codesign#v1.0.0:
         input_artifacts:
           - "thing.bin"
-          - "another-thing.bin"
         keychain: "production-certs.keychain"
   env:
         KEYCHAIN_PW: "KeychainPasswordGoesHere"
@@ -34,7 +51,6 @@ Using the default Improbable secret-fetching script with `keychain_pw_secret_nam
 
 ```yaml
 - label: "sign-macos-binary"
-  command: "" # No command needed here, since the `command` hook does the work.
   agents:
     - "queue=macos-codesigner"
   plugins:
@@ -50,7 +66,6 @@ Using a custom secret-fetching script:
 
 ```yaml
 - label: "sign-macos-binary"
-  command: "" # No command needed here, since the `command` hook does the work.
   agents:
     - "queue=macos-codesigner"
   plugins:
