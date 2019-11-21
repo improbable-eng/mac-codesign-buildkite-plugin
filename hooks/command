@@ -82,16 +82,17 @@ function get_signing_identity {
 #   identity: The identity to use for signing.
 function sign_and_validate {
   signing_target="${1}"
-  identity="${2}"
+  keychain="${2}"
+  identity="${3}"
 
-  codesign --verify --verbose --display --deep -s "${identity}" "${signing_target}"
+  codesign --verbose --display --deep --keychain "${codesigning_keychain}" --sign "${identity}" "${signing_target}"
   retval=$?
   if [[ "${retval}" -ne 0  ]]; then
     echo "codesigning of target '${signing_target}' failed: error code '${retval}'"
     exit 4
   fi
 
-  codesign --verify --deep --strict "${signing_target}"
+  codesign --verify --verbose --deep --strict "${signing_target}"
   retval=$?
   if [[ "${retval}" -ne 0  ]]; then
     echo "Unable to verify that '${signing_target}' has a valid code signature: error code '${retval}'"
@@ -136,7 +137,7 @@ echo "--- Unlocking the keychain"
 unlock_keychain "${codesigning_keychain}" "${keychain_pw}"
 
 echo "--- Finding the code signing identity in the unlocked keychain"
-identity=$(get_signing_identity "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}")
+identity=$(get_signing_identity "${codesigning_keychain}")
 
 # Sign things in a local dir so the uploaded artifacts don't have a weird path
 signed_dir_fragment="signed"
@@ -151,7 +152,7 @@ for artifact in $(plugin_read_list INPUT_ARTIFACTS) ; do
   unsigned_artifact="$(fetch_artifact ${artifact} ${relative_artifacts_dir})"
 
   echo "${artifact}: signing binary"
-  signed_artifact="$(sign_and_validate "${unsigned_artifact}" "${identity}")"
+  signed_artifact="$(sign_and_validate "${unsigned_artifact}" "${codesigning_keychain}" "${identity}")"
 
   # The pushd/popd/dirname/basename shenanigans are so the artifact path in BK is friendlier.  EG - 
   # "signed/$BINARY_NAME"
