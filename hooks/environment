@@ -33,8 +33,7 @@ if [[ "${BUILDKITE_AGENT_META_DATA_PLATFORM}" != "macos" ]]; then
   exit 4
 fi
 
-# This var doesn't seem to be set.  Will address later.
-# if [[ "${BUILDKITE_AGENT_META_DATA_HOSTNAME}" != "${permitted_signing_host}" ]]; then
-#   echo "Host ${BUILDKITE_AGENT_META_DATA_HOSTNAME} is not permitted to do code-signing."
-#   exit 5
-# fi
+if [[ "${BUILDKITE_AGENT_META_DATA_HOSTNAME}" != "${permitted_signing_host}" ]]; then
+  echo "Host ${BUILDKITE_AGENT_META_DATA_HOSTNAME} is not permitted to do code-signing."
+  exit 5
+fi
