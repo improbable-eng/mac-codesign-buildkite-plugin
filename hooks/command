@@ -91,7 +91,7 @@ function sign_and_validate {
 
 function upload_artifact {
   signed_artifact="${1}"
-  pushd "$(dirname ${signed_artifact})"
+  mv ${signed_artifact})
   buildkite-agent artifact upload "${signed_artifact}"
   retval=$?
   popd
@@ -125,17 +125,18 @@ unlock_keychain "${codesigning_keychain}" "${keychain_pw}"
 echo "--- Finding the code signing identity in the unlocked keychain"
 identity=$(get_signing_identity "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}")
 
-# Put all of the artifacts in a tempdir
-artifacts_dir=$(mktemp -d)
+# Sign things in a local dir so the uploaded artifacts don't have a weird path
+artifacts_dir="$(pwd)/signed"
+rm -rf "${artifacts_dir}" && mkdir -p "${artifacts_dir}"
 
 # Download and sign each requested artifact
 for artifact in $(plugin_read_list INPUT_ARTIFACTS) ; do
-  echo "--- Retrieving unsigned artifact ${fetch_target}"
+  echo "--- ${artifact}: retrieving unsigned artifact"
   unsigned_artifact="$(fetch_artifact ${artifact} ${artifacts_dir})"
 
-  echo "--- Signing target binary"
+  echo "--- ${artifact}: signing binary"
   signed_artifact="$(sign_and_validate "${unsigned_artifact}" "${identity}")"
 
-  echo "--- Uploading signed artifact"
+  echo "--- ${artifact}: uploading signed artifact"
   upload_artifact "${unsigned_artifact}"
 done
