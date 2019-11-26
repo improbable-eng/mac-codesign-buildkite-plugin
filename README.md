@@ -49,7 +49,7 @@ Using the `KEYCHAIN_PW` env var:
   agents:
     - "queue=macos-codesigner"
   plugins:
-    - improbable-eng/mac-codesign#v0.1.1:
+    - improbable-eng/mac-codesign#v0.1.2:
         input_artifacts:
           - "thing.bin"
         keychain: "production-certs.keychain"
@@ -64,7 +64,7 @@ Using the default Improbable secret-fetching script with `keychain_pw_secret_nam
   agents:
     - "queue=macos-codesigner"
   plugins:
-    - improbable-eng/mac-codesign#v0.1.1:
+    - improbable-eng/mac-codesign#v0.1.2:
         input_artifacts:
           - "thing.bin"
           - "another-thing.bin"
@@ -79,7 +79,7 @@ Using a custom secret-fetching script:
   agents:
     - "queue=macos-codesigner"
   plugins:
-    - improbable-eng/mac-codesign#v0.1.1:
+    - improbable-eng/mac-codesign#v0.1.2:
         input_artifacts:
           - "thing.bin"
           - "another-thing.bin"
