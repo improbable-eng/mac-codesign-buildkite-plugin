@@ -44,7 +44,7 @@ function get_keychain_pw {
   helper_script_path="${1}"
   helper_script_arg="${2}"
   if [[ -z "${KEYCHAIN_PW}" ]]; then
-    KEYCHAIN_PW="$(${helper_script_path} ${helper_script_arg})"
+    KEYCHAIN_PW="$("${helper_script_path}" "${helper_script_arg}")"
     retval=$?
     if [[ "${retval}" -ne 0 || -z "${KEYCHAIN_PW}"  ]]; then
       echo "Unable the fetch the secret using the helper script: error code '${retval}'"
@@ -73,7 +73,7 @@ function unlock_keychain {
 # Convenience wrapper to extract the identity from the cert in the keychain.
 # This is awful, but we need a portion of the identity from the keychain, and there's no clean way to do it.
 function get_signing_identity {
-  security find-identity ${codesign_keychain} | grep -A1 "Valid identities" | tail -1 | awk '{print $2}'
+  security find-identity "${1}" | grep -A1 "Valid identities" | tail -1 | awk '{print $2}'
 }
 
 # Sign the binary
@@ -85,7 +85,7 @@ function sign_and_validate {
   keychain="${2}"
   identity="${3}"
 
-  codesign --verbose --display --deep --keychain "${codesigning_keychain}" --sign "${identity}" "${signing_target}"
+  codesign --verbose --display --deep --keychain "${keychain}" --sign "${identity}" "${signing_target}"
   retval=$?
   if [[ "${retval}" -ne 0  ]]; then
     echo "codesigning of target '${signing_target}' failed: error code '${retval}'"
@@ -107,7 +107,7 @@ function sign_and_validate {
 #   artifact: Path of a file to upload to BuildKite as an artifact.
 function upload_artifact {
   artifact="${1}"
-  buildkite-agent artifact upload ${artifact}
+  buildkite-agent artifact upload "${artifact}"
   retval=$?
   if [[ "${retval}" -ne 0  ]]; then
     echo "Unable to upload ${artifact} to BuildKite: error code '${retval}'"
@@ -149,7 +149,7 @@ for artifact in $(plugin_read_list INPUT_ARTIFACTS) ; do
   echo "--- Signing ${artifact}"
 
   echo "${artifact}: retrieving unsigned artifact"
-  unsigned_artifact="$(fetch_artifact ${artifact} ${relative_artifacts_dir})"
+  unsigned_artifact="$(fetch_artifact "${artifact}" "${relative_artifacts_dir}")"
 
   echo "${artifact}: signing binary"
   signed_artifact="$(sign_and_validate "${unsigned_artifact}" "${codesigning_keychain}" "${identity}")"
@@ -158,8 +158,8 @@ for artifact in $(plugin_read_list INPUT_ARTIFACTS) ; do
   # "signed/$BINARY_NAME"
   # Otherwise it gets the fully-qualified path to the artifact, like:
   # "usr/local/var/buildkite-agent/builds/macos-codesigner/improbable/platform-mac-codesign-test/signed/imp-ci"
-  signed_dir="$(dirname ${signed_artifact})"
-  signed_file="$(basename ${signed_artifact})"
+  signed_dir="$(dirname "${signed_artifact}")"
+  signed_file="$(basename "${signed_artifact}")"
   
   echo "${signed_file}: uploading signed artifact"
   # Change to the directory containing "signed/", where the artifacts live.
