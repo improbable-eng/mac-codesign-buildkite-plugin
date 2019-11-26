@@ -17,5 +17,5 @@ configuration:
     keychain_pw_helper_script:
       type: string
   required:
-    - input_artifact
+    - input_artifacts
     - keychain
