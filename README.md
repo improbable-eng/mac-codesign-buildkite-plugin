@@ -24,7 +24,8 @@ TODO(@DoomGerbil): Make this design doc visible to people outside of Improbable.
 This plugin relies upon the build agent already having the necessary keychains created on the machine.
 
 Unfortunately, this is a necessity due to macos' insistence upon a one-time-per-key/keychain manual
-intervention to approve access to the signing key before `codesign` can use it (even if the cert/key are imported with `codesign` pre-granted access to use it).
+intervention to approve access to the signing key before `codesign` can use it (even if the cert/key are 
+imported with `codesign` pre-granted access to use it).
 
 ## Prerequisites
 

@@ -1,0 +1,13 @@
+steps:
+  - label: ":shell: Shellcheck"
+    plugins:
+      shellcheck#v1.1.2:
+        files: 
+          - "helpers/*.sh"
+          - "lib/*.sh"
+          - "hooks/*"
+
+  - label: ":sparkles:"
+    plugins:
+      plugin-linter#v2.0.0:
+        id: improbable-eng/mac-codesign
