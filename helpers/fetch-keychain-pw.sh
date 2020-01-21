@@ -11,6 +11,9 @@ keychain_pw_secret="${BUILDKITE_PLUGIN_MAC_CODESIGN_SIGNING_CERT_PW_SECRET}"
 keychain_pw_name="${1}"
 keychain_pw_path="${keychain_pw_root}/${keychain_pw_name}"
 
+export GOOGLE_APPLICATION_CREDENTIALS="/Users/Shared/secrets/service-account.json"
+export VAULT_ADDR="https://vault-external.stable.i8e.io:8200"
+
 # Get the keychain password from Vault
 if ! keychain_pw=$(imp-vault read-key --key="${keychain_pw_path}" --field=token); then
   echo "Unable to read specified secret ${keychain_pw_secret}"
