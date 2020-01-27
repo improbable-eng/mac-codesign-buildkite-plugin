@@ -6,7 +6,7 @@
 [[ -n "${DEBUG-}" ]] && set -x
 
 # All decryption password secrets must live under this path
-keychain_pw_root="secret/sync.v1/dev-workflow/production-buildkite/buildkite-agents/cert-decryption-password/"
+keychain_pw_root="secret/sync.v1/dev-workflow/production-buildkite/buildkite-agents/cert-decryption-password"
 keychain_pw_secret="${BUILDKITE_PLUGIN_MAC_CODESIGN_SIGNING_CERT_PW_SECRET}"
 keychain_pw_name="${1}"
 keychain_pw_path="${keychain_pw_root}/${keychain_pw_name}"
