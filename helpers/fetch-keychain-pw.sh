@@ -15,7 +15,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="/Users/Shared/secrets/service-account.jso
 export VAULT_ADDR="https://vault-external.stable.i8e.io:8200"
 
 # Get the keychain password from Vault
-if ! keychain_pw=$(imp-vault read-key --key="${keychain_pw_path}" --field=token --vault_role="continuous-integration-production-improbable-iam"); then
+if ! keychain_pw=$(imp-vault read-key --key="${keychain_pw_path}" --field=token --vault_role="continuous-integration-code-signer-improbable-iam"); then
   echo "Unable to read specified secret ${keychain_pw_secret}"
   exit 1
 else
