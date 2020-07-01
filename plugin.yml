@@ -5,16 +5,26 @@ author: https://github.com/DoomGerbil
 # TODO: Discover and list requirements
 requirements:
   - security
-  - codesign
+  - gon
 configuration:
   properties:
     input_artifacts:
       type: [ string, array ]
     keychain:
       type: string
+    key_wanted:
+      type: string
     keychain_pw_secret_name:
       type: string
     keychain_pw_helper_script:
+      type: string
+    tool_bundle_id:
+      type: string
+    apple_user_email:
+      type: string
+    tool_name:
+      type: string
+    tool_dmg_name:
       type: string
   required:
     - input_artifacts
