@@ -109,7 +109,7 @@ function generate_notarisation_config() {
         "path": $input,
         "bundle_id": $bundle_id,
         "staple": true,
-        },
+        }
       ],
       "apple_id": {
         "username": $apple_user_email,
@@ -129,16 +129,28 @@ function sign_and_validate() {
   if [[ "${signing_target}" == *.pkg ]]; then
     echo "${signing_target}: signing pkg"
     file_dir="$(dirname "${signing_target}")"
-    unsigned_file="$(basename "${signing_target}")"
-    signed_artifact="${file_dir}/signed/${unsigned_file}"
+    filename="$(basename "${signing_target}")"
+    signed_artifact_dir="${file_dir}/signed/"
+    signed_artifact="${signed_artifact_dir}/${filename}"
 
-    productsign -sign "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEY_WANTED}" "${signing_target}" "${signed_artifact}"
+    mkdir -p "${signed_artifact_dir}"
+
+    productsign --sign "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEY_WANTED}" "${signing_target}" "${signed_artifact}"
+    retval=$?
+    if [[ "${retval}" -ne 0 ]]; then
+      echo "productsigning of target '${signing_target}' failed: error code '${retval}'"
+      exit 4
+    fi
+
+    output_file="${signed_artifact}"
 
     echo "${signing_target}: generating package notarisation config"
-    generate_notarisation_config "${signing_target}" > "${config_path}"
+    generate_notarisation_config "${signing_target}" >"${config_path}"
   else
+    output_file="${signing_target}"
+
     echo "${signing_target}: generating code signing + notarisation config"
-    generate_signing_config "${signing_target}" > "${config_path}"
+    generate_signing_config "${signing_target}" >"${config_path}"
   fi
 
   echo "${signing_target}: executing gon on config"
@@ -149,7 +161,7 @@ function sign_and_validate() {
     exit 4
   fi
 
-  echo "${signing_target}"
+  echo "${output_file}"
 }
 
 # Convenience wrapper to upload our signed artifact to BuildKite
