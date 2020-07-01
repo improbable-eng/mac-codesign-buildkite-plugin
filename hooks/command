@@ -96,6 +96,28 @@ function generate_signing_config() {
     }'
 }
 
+function generate_notarisation_config() {
+  input="${1}"
+
+  jq -n \
+    --arg input "${input}" \
+    --arg bundle_id "${BUILDKITE_PLUGIN_MAC_CODESIGN_TOOL_BUNDLE_ID}" \
+    --arg apple_user_email "${BUILDKITE_PLUGIN_MAC_CODESIGN_APPLE_USER_EMAIL}" \
+    '{
+      "notarize": [
+        {
+        "path": $input,
+        "bundle_id": $bundle_id,
+        "staple": true,
+        },
+      ],
+      "apple_id": {
+        "username": $apple_user_email,
+        "password": "@keychain:apple_password",
+      },
+    }'
+}
+
 # Sign the binary
 # Params:
 #   signing_target: The unsigned item to sign.
@@ -104,9 +126,22 @@ function sign_and_validate() {
   signing_target="${1}"
 
   config_path="config.json"
-  echo "${artifact}: generating signing config"
-  generate_signing_config "${unsigned_artifact}" > "${config_path}"
+  if [[ "${signing_target}" == *.pkg ]]; then
+    echo "${signing_target}: signing pkg"
+    file_dir="$(dirname "${signing_target}")"
+    unsigned_file="$(basename "${signing_target}")"
+    signed_artifact="${file_dir}/signed/${unsigned_file}"
 
+    productsign -sign "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEY_WANTED}" "${signing_target}" "${signed_artifact}"
+
+    echo "${signing_target}: generating package notarisation config"
+    generate_notarisation_config "${signing_target}" > "${config_path}"
+  else
+    echo "${signing_target}: generating code signing + notarisation config"
+    generate_signing_config "${signing_target}" > "${config_path}"
+  fi
+
+  echo "${signing_target}: executing gon on config"
   gon --log-level=info "${config_path}"
   retval=$?
   if [[ "${retval}" -ne 0 ]]; then
