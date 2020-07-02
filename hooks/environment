@@ -22,7 +22,7 @@ fi
 
 if [[ "$codesign_keychain" != *.keychain ]]; then
   echo "keychain does not end with .keychain suffix"
-  echo 1
+  exit 1
 fi
 
 # Verify that this is only running on MacOS, via BuildKite, in proper CI, on our blessed agent.
@@ -41,10 +41,10 @@ if [[ "${BUILDKITE_AGENT_META_DATA_PLATFORM}" != "macos" ]]; then
   exit 4
 fi
 
-#if [[ "${BUILDKITE_AGENT_META_DATA_HOSTNAME}" != "${permitted_signing_host}" ]]; then
-#  echo "Host ${BUILDKITE_AGENT_META_DATA_HOSTNAME} is not permitted to do code-signing."
-#  exit 5
-#fi
+if [[ "${BUILDKITE_AGENT_META_DATA_HOSTNAME}" != "${permitted_signing_host}" ]]; then
+  echo "Host ${BUILDKITE_AGENT_META_DATA_HOSTNAME} is not permitted to do code-signing."
+  exit 5
+fi
 
 if [[ -z "${BUILDKITE_PLUGIN_MAC_CODESIGN_APPLE_USER_EMAIL}" ]]; then
   echo "The user email to notarise the tool with must be specified."
