@@ -214,7 +214,7 @@ for artifact in $(plugin_read_list INPUT_ARTIFACTS); do
     fi
 
     echo "${unsigned_artifact}: generating package notarisation config"
-    generate_notarisation_config "${unsigned_artifact}" >"${config_path}"
+    generate_notarisation_config "${signed_artifact}" >"${config_path}"
   else
 
     # `gon` uses `codesign`, which signs in-place; so move file to correct directory
