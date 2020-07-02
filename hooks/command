@@ -122,7 +122,7 @@ function generate_signing_config() {
 # Generate gon config for notarisation
 # Params:
 #   input: File to notarise
-function generate_notarisation_config() {
+function generate_notarization_config() {
   input="${1}"
 
   jq -n \
@@ -164,14 +164,14 @@ function sign_and_notarize() {
       exit 4
     fi
 
-    echo "${signed_artifact}: generating package notarisation config"
-    generate_notarisation_config "${signed_artifact}" >"${config_path}"
+    echo "${signed_artifact}: generating package notarization config"
+    generate_notarization_config "${signed_artifact}" >"${config_path}"
   else
 
     # `gon` uses `codesign`, which signs in-place; so move file to correct directory
     cp "${unsigned_artifact}" "${signed_artifact}"
 
-    echo "${signed_artifact}: generating code signing + notarisation config"
+    echo "${signed_artifact}: generating code signing + notarization config"
     generate_signing_config "${signed_artifact}" "${signed_dir_fragment}" >"${config_path}"
   fi
 
@@ -180,8 +180,8 @@ function sign_and_notarize() {
   gon "${config_path}"
   retval=$?
   if [[ "${retval}" -ne 0 ]]; then
-    echo "codesigning of target '${unsigned_artifact}' failed: error code '${retval}'"
-    exit 4
+    echo "notarization of target '${unsigned_artifact}' failed: error code '${retval}'"
+    exit 5
   fi
 }
 
@@ -238,6 +238,11 @@ for artifact in $(plugin_read_list INPUT_ARTIFACTS); do
   unsigned_artifact="$(fetch_artifact "${artifact}" "${relative_artifacts_dir}")"
 
   sign_and_notarize "${unsigned_artifact}" "${signed_dir_fragment}"
+  retval=$?
+  if [[ "${retval}" -ne 0 ]]; then
+    echo "failed to sign and notarize '${unsigned_artifact}': error code '${retval}'"
+    exit ${retval}
+  fi
 
 done
 
