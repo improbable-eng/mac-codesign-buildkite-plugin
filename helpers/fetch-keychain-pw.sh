@@ -7,13 +7,12 @@
 
 # All decryption password secrets must live under this path
 keychain_pw_root="secret/sync.v1/dev-workflow/production-buildkite/buildkite-agents/cert-decryption-password/"
-keychain_pw_secret="${BUILDKITE_PLUGIN_MAC_CODESIGN_SIGNING_CERT_PW_SECRET}"
-keychain_pw_name="${1}"
+keychain_pw_name="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_PW_SECRET_NAME}"
 keychain_pw_path="${keychain_pw_root}/${keychain_pw_name}"
 
 # Get the keychain password from Vault
 if ! keychain_pw=$(imp-vault read-key --key="${keychain_pw_path}" --field=token); then
-  echo "Unable to read specified secret ${keychain_pw_secret}"
+  echo "Unable to read specified secret ${keychain_pw_name}"
   exit 1
 else
   echo "${keychain_pw}"

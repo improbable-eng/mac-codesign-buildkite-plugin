@@ -1,21 +1,35 @@
 ---
 name: MacOS-Codesigner
-description: "Apply code signatures to MacOS binaries"
+description: "Apply code signatures and sign MacOS binaries"
 author: https://github.com/DoomGerbil
-# TODO: Discover and list requirements
 requirements:
   - security
+  - gon
   - codesign
+  - productsign
 configuration:
   properties:
     input_artifacts:
       type: [ string, array ]
     keychain:
       type: string
+    cert_identity:
+      type: string
     keychain_pw_secret_name:
       type: string
     keychain_pw_helper_script:
       type: string
+    tool_bundle_id:
+      type: string
+    apple_user_email:
+      type: string
+    tool_name:
+      type: string
+    tool_dmg_name:
+      type: string
   required:
     - input_artifacts
     - keychain
+    - cert_identity
+    - tool_bundle_id
+    - apple_user_email

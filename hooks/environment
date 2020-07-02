@@ -4,10 +4,10 @@
 # 1. Ensure that the requested keychain exists
 # 2. Validate that this job is allowed to proceed with codesigning tasks.
 
+set -o errexit -o nounset -o pipefail
 [[ -n "${DEBUG-}" ]] && set -x
 
-# TODO: Make this be the actual signing host, not my laptop.
-permitted_signing_host="sean-mac-c02xv3a8jgh6"
+permitted_signing_host="codesigning-agent"
 codesign_keychain="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}"
 
 if [[ -z "${codesign_keychain}" ]]; then
@@ -17,6 +17,11 @@ fi
 
 if ! security list-keychains | grep "${codesign_keychain}" > /dev/null; then
   echo "Unable to find/read specified signing keychain ${codesign_keychain}"
+  exit 1
+fi
+
+if [[ "$codesign_keychain" != *.keychain ]]; then
+  echo "keychain does not end with .keychain suffix"
   exit 1
 fi
 
@@ -39,4 +44,14 @@ fi
 if [[ "${BUILDKITE_AGENT_META_DATA_HOSTNAME}" != "${permitted_signing_host}" ]]; then
   echo "Host ${BUILDKITE_AGENT_META_DATA_HOSTNAME} is not permitted to do code-signing."
   exit 5
+fi
+
+if [[ -z "${BUILDKITE_PLUGIN_MAC_CODESIGN_APPLE_USER_EMAIL}" ]]; then
+  echo "The user email to notarize the tool with must be specified."
+  exit 7
+fi
+
+if [[ -z "${BUILDKITE_PLUGIN_MAC_CODESIGN_TOOL_BUNDLE_ID}" ]]; then
+  echo "A tool bundle_id must be specified."
+  exit 8
 fi
