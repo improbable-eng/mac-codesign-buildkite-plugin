@@ -84,7 +84,7 @@ function generate_signing_config() {
     --arg input "${input}" \
     --arg bundle_id "${BUILDKITE_PLUGIN_MAC_CODESIGN_TOOL_BUNDLE_ID}" \
     --arg apple_user_email "${BUILDKITE_PLUGIN_MAC_CODESIGN_APPLE_USER_EMAIL}" \
-    --arg identity "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEY_WANTED}" \
+    --arg identity "${BUILDKITE_PLUGIN_MAC_CODESIGN_CERT_IDENTITY}" \
     '{
       "source": [$input],
       "bundle_id": $bundle_id,
@@ -206,7 +206,7 @@ for artifact in $(plugin_read_list INPUT_ARTIFACTS); do
     echo "${unsigned_artifact}: signing pkg"
 
     echo "${unsigned_artifact}: signing PKG file"
-    productsign --sign "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEY_WANTED}" "${unsigned_artifact}" "${signed_artifact}"
+    productsign --sign "${BUILDKITE_PLUGIN_MAC_CODESIGN_CERT_IDENTITY}" "${unsigned_artifact}" "${signed_artifact}"
     retval=$?
     if [[ "${retval}" -ne 0 ]]; then
       echo "productsigning of target '${unsigned_artifact}' failed: error code '${retval}'"
