@@ -124,7 +124,7 @@ PKG files, and "Application" cert for anything else.
 
 #### Keychain unlocking
 
-Since your signing certs needs to be stored in a keychain, and that keychain is assumed to be locked, we
+Since your signing certs need to be stored in a keychain, and that keychain is assumed to be locked, we
 need a password to unlock the signing keychain.
 
 There are two ways to supply a keychain unlocking password to this plugin:
