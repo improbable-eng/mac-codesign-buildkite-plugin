@@ -117,7 +117,7 @@ PKG files, and "Application" cert for anything else.
 - `keychain_pw_secret_name`: (optional) Name of the password to extract from your preferred secret store (eg: Vault)
 - `keychain_pw_helper_script`: (optional) Custom helper script to obtain the keychain password.
 - `tool_bundle_id`: The apple bundle id to use with your artifacts.
-- `apple_user_email`: The account email for your notarisation process. Password should be stored in the keychain at the `apple_password` key.
+- `apple_user_email`: The account email for your notarization process. Password should be stored in the keychain at the `apple_password` key.
 - `tool_name`: (optional) The title of the DMG file to produce. If this is not specified, not DMG will be generated. Not relevant to PKG files.
 - `tool_dmg_name`: (optional) The filename of the dmg to create (including the .dmg extension).
 

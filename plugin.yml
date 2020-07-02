@@ -1,8 +1,7 @@
 ---
 name: MacOS-Codesigner
-description: "Apply code signatures to MacOS binaries"
+description: "Apply code signatures and sign MacOS binaries"
 author: https://github.com/DoomGerbil
-# TODO: Discover and list requirements
 requirements:
   - security
   - gon
