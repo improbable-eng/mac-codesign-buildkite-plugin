@@ -46,22 +46,12 @@ fi
 #  exit 5
 #fi
 
-if [[ -z "${BUILDKITE_PLUGIN_MAC_CODESIGN_TOOL_NAME}" ]]; then
-  echo "A tool name must be specified."
-  exit 7
-fi
-
-if [[ -z "${BUILDKITE_PLUGIN_MAC_CODESIGN_TOOL_DMG_NAME}" ]]; then
-  echo "A tool dmg must be specified."
-  exit 8
-fi
-
 if [[ -z "${BUILDKITE_PLUGIN_MAC_CODESIGN_APPLE_USER_EMAIL}" ]]; then
   echo "The user email to notarise the tool with must be specified."
-  exit 9
+  exit 7
 fi
 
 if [[ -z "${BUILDKITE_PLUGIN_MAC_CODESIGN_TOOL_BUNDLE_ID}" ]]; then
   echo "A tool bundle_id must be specified."
-  exit 10
+  exit 8
 fi
