@@ -31,3 +31,6 @@ configuration:
   required:
     - input_artifacts
     - keychain
+    - cert_identity
+    - tool_bundle_id
+    - apple_user_email
