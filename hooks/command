@@ -144,6 +144,47 @@ function generate_notarisation_config() {
     }'
 }
 
+function sign_and_notarize() {
+  unsigned_artifact="${1}"
+  signed_dir_fragment="${2}"
+
+  signed_artifact="${signed_dir_fragment}/$(basename "${unsigned_artifact}")"
+  config_path="${signed_dir_fragment}/config.json"
+
+  if [[ "${unsigned_artifact}" == *.pkg ]]; then
+    # PKG files need to be signed with "Developer ID Installer" certs through `productsign`.
+    # `gon` only supports "Application" certs, through `codesign`.
+    # This steps signs with productsign, and then generates a gon config to notarize it.
+
+    echo "${unsigned_artifact}: signing PKG file"
+    productsign --sign "${BUILDKITE_PLUGIN_MAC_CODESIGN_CERT_IDENTITY}" "${unsigned_artifact}" "${signed_artifact}"
+    retval=$?
+    if [[ "${retval}" -ne 0 ]]; then
+      echo "productsigning of target '${unsigned_artifact}' failed: error code '${retval}'"
+      exit 4
+    fi
+
+    echo "${signed_artifact}: generating package notarisation config"
+    generate_notarisation_config "${signed_artifact}" >"${config_path}"
+  else
+
+    # `gon` uses `codesign`, which signs in-place; so move file to correct directory
+    cp "${unsigned_artifact}" "${signed_artifact}"
+
+    echo "${signed_artifact}: generating code signing + notarisation config"
+    generate_signing_config "${signed_artifact}" "${signed_dir_fragment}" >"${config_path}"
+  fi
+
+  # Use `gon` config generated in earlier steps to sign (if necessary) and notarise.
+  echo "${artifact}: executing gon on generated config"
+  gon "${config_path}"
+  retval=$?
+  if [[ "${retval}" -ne 0 ]]; then
+    echo "codesigning of target '${unsigned_artifact}' failed: error code '${retval}'"
+    exit 4
+  fi
+}
+
 # Convenience wrapper to upload our signed artifact to BuildKite
 # Params:
 #   artifact: Path of a file to upload to BuildKite as an artifact.
@@ -196,43 +237,7 @@ for artifact in $(plugin_read_list INPUT_ARTIFACTS); do
   echo "${artifact}: retrieving unsigned artifact"
   unsigned_artifact="$(fetch_artifact "${artifact}" "${relative_artifacts_dir}")"
 
-  signed_artifact="${signed_dir_fragment}/$(basename "${unsigned_artifact}")"
-
-  config_path="${signed_dir_fragment}/config.json"
-  if [[ "${unsigned_artifact}" == *.pkg ]]; then
-    # PKG files need to be signed with "developer ID Installer" certs through `productsign`.
-    # `gon` only supports "Application" certs, through `codesign`.
-    # This steps signs with productsign, and then generates a gon config to notarize it.
-    echo "${unsigned_artifact}: signing pkg"
-
-    echo "${unsigned_artifact}: signing PKG file"
-    productsign --sign "${BUILDKITE_PLUGIN_MAC_CODESIGN_CERT_IDENTITY}" "${unsigned_artifact}" "${signed_artifact}"
-    retval=$?
-    if [[ "${retval}" -ne 0 ]]; then
-      echo "productsigning of target '${unsigned_artifact}' failed: error code '${retval}'"
-      exit 4
-    fi
-
-    echo "${unsigned_artifact}: generating package notarisation config"
-    generate_notarisation_config "${signed_artifact}" >"${config_path}"
-  else
-
-    # `gon` uses `codesign`, which signs in-place; so move file to correct directory
-    cp "${unsigned_artifact}" "${signed_artifact}"
-    signed_artifact="${unsigned_artifact}"
-
-    echo "${unsigned_artifact}: generating code signing + notarisation config"
-    generate_signing_config "${signed_artifact}" "${signed_dir_fragment}" >"${config_path}"
-  fi
-
-  # Use `gon` config generated in earlier steps to sign (if necessary) and notarise.
-  echo "${artifact}: executing gon on generated config"
-  gon "${config_path}"
-  retval=$?
-  if [[ "${retval}" -ne 0 ]]; then
-    echo "codesigning of target '${unsigned_artifact}' failed: error code '${retval}'"
-    exit 4
-  fi
+  sign_and_notarize "${unsigned_artifact}" "${signed_dir_fragment}"
 
 done
 
