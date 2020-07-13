@@ -7,7 +7,7 @@
 # 4. Sign the binary and validate the signature
 # 5. Upload the binary as a BuildKite artifact
 
-set -o errexit -o nounset -o pipefail
+set -o errexit -o pipefail
 [[ -n "${DEBUG-}" ]] && set -x
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
