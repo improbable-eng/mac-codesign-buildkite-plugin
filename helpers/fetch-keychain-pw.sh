@@ -11,7 +11,7 @@ keychain_pw_name="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_PW_SECRET_NAME}"
 keychain_pw_path="${keychain_pw_root}/${keychain_pw_name}"
 
 # Get the keychain password from Vault
-if ! keychain_pw=$(imp-vault read-key --key="${keychain_pw_path}" --field=token --role="continuous-integration-production-improbable-iam"); then
+if ! keychain_pw=$(imp-vault read-key --key="${keychain_pw_path}" --field=token --vault_role="continuous-integration-production-improbable-iam"); then
   echo "Unable to read specified secret ${keychain_pw_name}"
   exit 1
 else
