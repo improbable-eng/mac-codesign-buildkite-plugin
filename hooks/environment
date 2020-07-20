@@ -15,7 +15,7 @@ if [[ -z "${codesign_keychain}" ]]; then
   exit 6
 fi
 
-if ! security list-keychains | grep "${codesign_keychain}" > /dev/null; then
+if ! security list-keychains | grep "${codesign_keychain}" >/dev/null; then
   echo "Unable to find/read specified signing keychain ${codesign_keychain}"
   exit 1
 fi
