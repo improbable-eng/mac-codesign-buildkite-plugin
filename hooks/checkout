@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-# This just makes this job not do a checkout.  It's not needed, so why do it?
-
-set -euo pipefail
-
-echo "--- Skipping checkout"
