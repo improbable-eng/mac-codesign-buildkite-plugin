@@ -114,31 +114,6 @@ function generate_signing_config() {
   fi
 }
 
-# Generate gon config for notarization
-# Params:
-#   input: File to notarize
-function generate_notarization_config() {
-  input="${1}"
-
-  jq -n \
-    --arg input "${input}" \
-    --arg bundle_id "${BUILDKITE_PLUGIN_MAC_CODESIGN_TOOL_BUNDLE_ID}" \
-    --arg apple_user_email "${BUILDKITE_PLUGIN_MAC_CODESIGN_APPLE_USER_EMAIL}" \
-    '{
-      "notarize": [
-        {
-        "path": $input,
-        "bundle_id": $bundle_id,
-        "staple": true,
-        }
-      ],
-      "apple_id": {
-        "username": $apple_user_email,
-        "password": "@keychain:apple_password",
-      },
-    }'
-}
-
 # Convenience wrapper to upload our signed artifact to BuildKite
 # Params:
 #   artifact: Path of a file to upload to BuildKite as an artifact.
@@ -181,7 +156,7 @@ artifact_dir_fragment="artifacts"
 rm -rf "${artifact_dir_fragment}" && mkdir -p "${artifact_dir_fragment}"
 absolute_artifacts_dir="$(pwd)/${artifact_dir_fragment}"
 
-## Download and sign each requested artifact
+## Download each requested artifact
 plugin_read_list INPUT_ARTIFACTS | while read -r artifact; do
   echo "${artifact}: retrieving unsigned artifact"
   fetch_artifact "${artifact}" "${absolute_artifacts_dir}"
@@ -189,7 +164,7 @@ done
 
 entitlements="${BUILDKITE_PLUGIN_MAC_CODESIGN_ENTITLEMENTS}"
 if [[ -n "${entitlements}" ]]; then
-  #  fetch_artifact "${entitlements}" "${absolute_artifacts_dir}"
+  fetch_artifact "${entitlements}" "${absolute_artifacts_dir}"
   entitlements="${absolute_artifacts_dir}/${entitlements}"
 fi
 
