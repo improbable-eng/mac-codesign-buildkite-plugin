@@ -5,9 +5,6 @@
 set -o errexit -o nounset -o pipefail
 [[ -n "${DEBUG-}" ]] && set -x
 
-# Clean up the unsigned artifact
-rm -f "${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}"
-
 # And lock the door behind us
 echo "--- Locking signing keychain"
 

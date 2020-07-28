@@ -6,11 +6,17 @@ requirements:
   - security
   - gon
   - codesign
-  - productsign
+  - jq
 configuration:
   properties:
     input_artifacts:
       type: [ string, array ]
+    sign_prerequisites:
+      type: [ string, array ]
+    output_artifacts:
+      type: [ string, array ]
+    entitlements:
+      type: string
     keychain:
       type: string
     cert_identity:
@@ -23,12 +29,10 @@ configuration:
       type: string
     apple_user_email:
       type: string
-    tool_name:
-      type: string
-    tool_dmg_name:
-      type: string
   required:
     - input_artifacts
+    - sign_prerequisites
+    - output_artifacts
     - keychain
     - cert_identity
     - tool_bundle_id

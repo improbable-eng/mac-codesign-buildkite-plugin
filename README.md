@@ -14,9 +14,9 @@ The required keychain items should also have been allowed access for the relevan
 
 ### Features
 
-- Signs binaries, dmgs, pkgs, or apps for MacOS.
+- Signs binaries, dmgs, or apps for MacOS.
 - Notarization, with stapling of the notarization ticket.
-- One or more targets can be specified for signing at once.
+- Specifying multiple sub targets to sign. For example: the frameworks in a `.app`.
 - Notarization password can be fetched from keychain.
 - Automatic unlocking/locking of signing keychains.
 - Secrets for unlocking signing certs can be supplied as env vars or fetched from external secret storage (eg Vault).
@@ -31,14 +31,14 @@ The required keychain items should also have been allowed access for the relevan
 Your build agent requires a few things for this to work properly.
 
 1. XCode 11+ must be installed.
-    1. `altool`, `codesign` and `productsign` must be on the $PATH.
+    1. `altool`, `codesign` must be on the $PATH.
 1. [`gon`](https://github.com/mitchellh/gon) must be installed and on the $PATH. This is the wrapper which handles
 codesigning and notarization.
+1. `jq` must be installed and on the $PATH.
 1. Each item stored in the keychain must have been whitelisted for access by the relevant tool. To do this, double click
 on the restricted keychain item, select the "Access Control" tab, and add the tool to the list of applications
 to "always allow access to". This means that:
-    1. for PKG signing; the private key for your "Developer ID Installer" cert must have `productsign` added to it.
-    1. for signing anything else; the private key for your "Developer ID Application" cert must have `codesign` added to it.
+    1. for code signing; the private key for your "Developer ID Application" cert must have `codesign` added to it.
     1. for notarization: your account password should be stored in a keychain item named "apple_password", with the
     "account" field being the relevant apple email. It should be accessible by `altool`.
 
@@ -110,17 +110,16 @@ This plugin defines hooks for `environment`, `checkout`, `command`, and `post-co
 
 #### Available properties
 
-- `input_artifacts`: String array of artifact paths to download and sign.
+- `input_artifacts`: String array of artifact paths to download that are required to sign.
+- `sign_prerequisites`: String array of the specific artifact paths to sign. In the case of `.app`s, make sure to list these bottom-up; internal frameworks/helpers first, and `.app` at the end.
+- `output_artifacts`: String array of relevant artifact to upload back to artifacts.
+- `entitlements`: String path of artifact containing entitlements to apply.
 - `keychain`: Name of the keychain storing the secrets. (Note: usually requires the .keychain extension)
-- `cert_identity`: Name of the cert to use to sign your artifacts. Should be the "Installer" cert for signing
-PKG files, and "Application" cert for anything else.
+- `cert_identity`: Name of the cert to use to sign your artifacts. Should be the "Application" cert, not the "Installer" cert.
 - `keychain_pw_secret_name`: (optional) Name of the password to extract from your preferred secret store (eg: Vault)
 - `keychain_pw_helper_script`: (optional) Custom helper script to obtain the keychain password.
 - `tool_bundle_id`: The apple bundle id to use with your artifacts.
 - `apple_user_email`: The account email for your notarization process. Password should be stored in the keychain at the `apple_password` key.
-- `tool_name`: (optional) The title of the DMG file to produce. If this is not specified, not DMG will be generated. Not relevant to PKG files.
-- `tool_dmg_name`: (optional) The filename of the dmg to create (including the .dmg extension).
-
 
 #### Keychain unlocking
 
