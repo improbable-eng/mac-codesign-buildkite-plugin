@@ -53,7 +53,13 @@ Using the `KEYCHAIN_PW` env var:
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
         input_artifacts:
-          - "thing.bin"
+          - "mac/software.app/*"
+        sign_prerequisites:
+          - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
+          - "mac/software.app" 
+        output_artifact:
+          - "mac/**/*"
+
         keychain: "production-certs.keychain"
   env:
         KEYCHAIN_PW: "KeychainPasswordGoesHere"
@@ -68,8 +74,12 @@ Using the default Improbable secret-fetching script with `keychain_pw_secret_nam
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
         input_artifacts:
-          - "thing.bin"
-          - "another-thing.bin"
+          - "mac/software.app/*"
+        sign_prerequisites:
+          - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
+          - "mac/software.app" 
+        output_artifact:
+          - "mac/**/*"
         keychain: "production-certs.keychain"
         keychain_pw_secret_name: "ci/improbable/production-codesigning"
 ```
@@ -83,8 +93,12 @@ Using a custom secret-fetching script:
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
         input_artifacts:
-          - "thing.bin"
-          - "another-thing.bin"
+          - "mac/software.app/*"
+        sign_prerequisites:
+          - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
+          - "mac/software.app" 
+        output_artifact:
+          - "mac/**/*"
         keychain: "production-certs.keychain"
         keychain_pw_helper_script: "~/fetch-keychain-pw.sh"
         keychain_pw_secret_name: "production-codesigning-keychain-pw"
