@@ -131,10 +131,7 @@ function upload_artifact() {
 # Allow the user to override the default keychain pw retrieval helper script.
 function find_keychain_pw_helper_script() {
   local script
-  if [[ -n "${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_PW_HELPER_SCRIPT:-}" ]]; then
-    script="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_PW_HELPER_SCRIPT}"
-  else
-    script="${default_keychain_pw_helper_script}"
+  script="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_PW_HELPER_SCRIPT:-default_keychain_pw_helper_script}"
   fi
 
   echo "${script}"
