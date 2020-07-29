@@ -162,6 +162,7 @@ function sign_code() {
   fi
 
   # Move artifacts to signed artifacts
+  mkdir -p "$(dirname "${signed_artifact}")"
   mv "${artifact}" "${signed_artifact}"
 }
 
