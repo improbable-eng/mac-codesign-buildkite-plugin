@@ -75,12 +75,12 @@ function unlock_keychain() {
 # Params:
 #   prerequisites: variable stub to get list of prerequisites from YAML definition
 #   entitlements: path to entitlements file (ignored if empty)
-#   absolute_artifacts_dir: root path to artifacts
+#   artifacts_dir: root path to relevant artifacts
 #   config_path: path to write gon config file to
 function generate_signing_config() {
   local prerequisites="${1}"
   local entitlements="${2}"
-  local absolute_artifacts_dir="${3}"
+  local artifacts_dir="${3}"
   local config_path="${4}"
 
   jq -n \
@@ -102,7 +102,7 @@ function generate_signing_config() {
   echo "${prerequisites}" | while read -r prereq; do
     # iterate over prerequisites, adding them to the codesign config
     local config
-    config="$(jq --arg toSign "${absolute_artifacts_dir}/${prereq}" '.source += [$toSign]' "${config_path}")"
+    config="$(jq --arg toSign "${artifacts_dir}/${prereq}" '.source += [$toSign]' "${config_path}")"
     echo "${config}" >"${config_path}"
   done
 
@@ -111,6 +111,82 @@ function generate_signing_config() {
     local config
     config="$(jq --arg entitlements "${entitlements}" '.sign.entitlements_file = $entitlements' "${config_path}")"
     echo "${config}" >"${config_path}"
+  fi
+}
+
+# Generate gon config for notarization
+# Params:
+#   inputfile: File to notarize
+#   config_path: Path to config
+function generate_notarization_config() {
+  local inputfile="${1}"
+  local config_path="${2}"
+
+  jq -n \
+    --arg inputfile "${inputfile}" \
+    --arg bundle_id "${BUILDKITE_PLUGIN_MAC_CODESIGN_TOOL_BUNDLE_ID}" \
+    --arg apple_user_email "${BUILDKITE_PLUGIN_MAC_CODESIGN_APPLE_USER_EMAIL}" \
+    '{
+      "notarize": [
+        {
+        "path": $inputfile,
+        "bundle_id": $bundle_id,
+        "staple": true,
+        }
+      ],
+      "apple_id": {
+        "username": $apple_user_email,
+        "password": "@keychain:apple_password",
+      },
+    }' >"${config_path}"
+}
+
+function sign_code() {
+  local artifact="${1}"
+  local signed_artifact="${2}"
+  local config_path="${3}"
+  local prerequisites="${4}"
+  local entitlements="${5}"
+  local artifact_dir="${6}"
+
+  # generate config
+  echo "${artifact}: Generating codesigning + notarization config"
+  generate_signing_config "${prerequisites}" "${entitlements}" "${artifact_dir}" "${config_path}"
+
+  echo "${artifact}: Executing gon on generated config"
+  gon "${config_path}"
+  retval=$?
+  if [[ "${retval}" -ne 0 ]]; then
+    echo "signing+notarization failed: error code '${retval}'"
+    exit 5
+  fi
+
+  # Move artifacts to signed artifacts
+  mv "${artifact}" "${signed_artifact}"
+}
+
+function sign_pkg() {
+  local artifact="${1}"
+  local signed_artifact="${2}"
+  local config_path="${3}"
+
+  echo "${artifact}: signing PKG file"
+  productsign --sign "${BUILDKITE_PLUGIN_MAC_CODESIGN_CERT_IDENTITY}" "${artifact}" "${signed_artifact}"
+  retval=$?
+  if [[ "${retval}" -ne 0 ]]; then
+    echo "productsigning of target '${artifact}' failed: error code '${retval}'"
+    exit 4
+  fi
+
+  echo "${artifact}: Generating package notarization config"
+  generate_notarization_config "${signed_artifact}"
+
+  echo "${artifact}: notarizing through gon"
+  gon "${config_path}"
+  retval=$?
+  if [[ "${retval}" -ne 0 ]]; then
+    echo "notarization failed: error code '${retval}'"
+    exit 5
   fi
 }
 
@@ -131,8 +207,7 @@ function upload_artifact() {
 # Allow the user to override the default keychain pw retrieval helper script.
 function find_keychain_pw_helper_script() {
   local script
-  script="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_PW_HELPER_SCRIPT:-default_keychain_pw_helper_script}"
-  fi
+  script="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN_PW_HELPER_SCRIPT:-${default_keychain_pw_helper_script}}"
 
   echo "${script}"
 }
@@ -144,49 +219,59 @@ echo "--- Getting the password to unlock the keychain"
 keychain_pw_helper_script=$(find_keychain_pw_helper_script)
 keychain_pw=$(get_keychain_pw "${keychain_pw_helper_script}")
 
-#echo "--- Unlocking the keychain"
+echo "--- Unlocking the keychain"
 unlock_keychain "${codesigning_keychain}" "${keychain_pw}"
 
 echo "--- Setting up local directories"
 # Download things in a local dir to identify them
 artifact_dir_fragment="artifacts"
 rm -rf "${artifact_dir_fragment}" && mkdir -p "${artifact_dir_fragment}"
-absolute_artifacts_dir="$(pwd)/${artifact_dir_fragment}"
 
-## Download each requested artifact
-plugin_read_list INPUT_ARTIFACTS | while read -r artifact; do
-  echo "${artifact}: retrieving unsigned artifact"
-  fetch_artifact "${artifact}" "${absolute_artifacts_dir}"
-done
+signed_dir_fragment="signed"
+rm -rf "${signed_dir_fragment}" && mkdir -p "${signed_dir_fragment}"
+# Do not use absolute path to avoid polluting artifact names
 
-entitlements="${BUILDKITE_PLUGIN_MAC_CODESIGN_ENTITLEMENTS}"
+# Download entitlements
+entitlements="${BUILDKITE_PLUGIN_MAC_CODESIGN_ENTITLEMENTS:-}"
 if [[ -n "${entitlements}" ]]; then
-  fetch_artifact "${entitlements}" "${absolute_artifacts_dir}"
-  entitlements="${absolute_artifacts_dir}/${entitlements}"
+  fetch_artifact "${entitlements}" "${artifact_dir_fragment}"
+  entitlements="${artifact_dir_fragment}/${entitlements}"
 fi
 
-config_path="config.json"
-prerequisites="$(plugin_read_list SIGN_PREREQUISITES)"
+## Download requested artifact
+artifact="${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}"
+echo "${artifact}: retrieving unsigned artifact"
 
-# generate config
-echo "-- Generating signing config"
-generate_signing_config "${prerequisites}" "${entitlements}" "${absolute_artifacts_dir}" "${config_path}"
-
-echo "-- Executing gon on generated config"
-gon "${config_path}"
-retval=$?
-if [[ "${retval}" -ne 0 ]]; then
-  echo "notarization failed: error code '${retval}'"
+if [[ "${artifact}" == *"*"* ]]; then
+  echo "inputfile artifacts cannot contain wildcards: '${artifact}'"
   exit 5
 fi
 
-echo "--- Uploading output artifacts"
-# upload config
-echo "${config_path}: uploading config used"
-upload_artifact "${config_path}"
+## If .app or .framework, handle as a directory.
+if [[ "${artifact}" == *".app" || "${artifact}" == *".framework" ]]; then
+  fetch_artifact "${artifact}/**/*" "${artifact_dir_fragment}"
+else
+  fetch_artifact "${artifact}" "${artifact_dir_fragment}"
+fi
+artifact="${artifact_dir_fragment}/${artifact}"
 
-# upload signed items
-plugin_read_list OUTPUT_ARTIFACTS | while read -r artifact; do
-  echo "${artifact}: uploading signed artifact"
-  upload_artifact "${absolute_artifacts_dir}/${artifact}"
-done
+config_path="${signed_dir_fragment}/config.json"
+prerequisites="$(plugin_read_list SIGN_PREREQUISITES)"
+if [[ -z "${prerequisites}" ]]; then
+  # If no prerequisites specified, simply sign artifact
+  prerequisites="${artifact}"
+fi
+
+signed_artifact="${signed_dir_fragment}/${artifact}"
+
+if [[ "${artifact}" == *".pkg" ]]; then
+  # PKG files need to be signed with "Developer ID Installer" certs through `productsign`.
+  # `gon` only supports "Application" certs, through `codesign`.
+  # This steps signs with productsign, and then generates a gon config to notarize it.
+  sign_pkg "${artifact}" "${signed_artifact}" "${config_path}"
+else
+  sign_code "${artifact}" "${signed_artifact}" "${config_path}" "${prerequisites}" "${entitlements}" "${artifact_dir_fragment}"
+fi
+
+echo "--- Uploading output artifacts"
+upload_artifact "${signed_dir_fragment}/**/*"

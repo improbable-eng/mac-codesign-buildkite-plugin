@@ -4,16 +4,16 @@ description: "Apply code signatures and sign MacOS binaries"
 author: https://github.com/DoomGerbil
 requirements:
   - security
-  - gon
+  - altool
   - codesign
+  - productsign
+  - gon
   - jq
 configuration:
   properties:
-    input_artifacts:
-      type: [ string, array ]
+    input_artifact:
+      type: string
     sign_prerequisites:
-      type: [ string, array ]
-    output_artifacts:
       type: [ string, array ]
     entitlements:
       type: string
@@ -30,9 +30,7 @@ configuration:
     apple_user_email:
       type: string
   required:
-    - input_artifacts
-    - sign_prerequisites
-    - output_artifacts
+    - input_artifact
     - keychain
     - cert_identity
     - tool_bundle_id

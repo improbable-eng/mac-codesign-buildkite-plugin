@@ -14,7 +14,7 @@ The required keychain items should also have been allowed access for the relevan
 
 ### Features
 
-- Signs binaries, dmgs, or apps for MacOS.
+- Signs binaries, dmgs, pkgs, or apps for MacOS.
 - Notarization, with stapling of the notarization ticket.
 - Specifying multiple sub targets to sign. For example: the frameworks in a `.app`.
 - Notarization password can be fetched from keychain.
@@ -31,14 +31,15 @@ The required keychain items should also have been allowed access for the relevan
 Your build agent requires a few things for this to work properly.
 
 1. XCode 11+ must be installed.
-    1. `altool`, `codesign` must be on the $PATH.
+    1. `altool`, `codesign`, and `productsign` must be on the $PATH.
 1. [`gon`](https://github.com/mitchellh/gon) must be installed and on the $PATH. This is the wrapper which handles
 codesigning and notarization.
 1. `jq` must be installed and on the $PATH.
 1. Each item stored in the keychain must have been whitelisted for access by the relevant tool. To do this, double click
 on the restricted keychain item, select the "Access Control" tab, and add the tool to the list of applications
 to "always allow access to". This means that:
-    1. for code signing; the private key for your "Developer ID Application" cert must have `codesign` added to it.
+    1. for PKG signing; the private key for your "Developer ID Installer" cert must have `productsign` added to it.
+    1. for signing anything else; the private key for your "Developer ID Application" cert must have `codesign` added to it.
     1. for notarization: your account password should be stored in a keychain item named "apple_password", with the
     "account" field being the relevant apple email. It should be accessible by `altool`.
 
@@ -53,12 +54,10 @@ Using the `KEYCHAIN_PW` env var:
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
         input_artifacts:
-          - "mac/software.app/*"
+          - "mac/software.app"
         sign_prerequisites:
           - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
           - "mac/software.app" 
-        output_artifact:
-          - "mac/**/*"
 
         keychain: "production-certs.keychain"
   env:
@@ -74,12 +73,11 @@ Using the default Improbable secret-fetching script with `keychain_pw_secret_nam
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
         input_artifacts:
-          - "mac/software.app/*"
+          - "mac/software.app"
         sign_prerequisites:
           - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
           - "mac/software.app" 
-        output_artifact:
-          - "mac/**/*"
+
         keychain: "production-certs.keychain"
         keychain_pw_secret_name: "ci/improbable/production-codesigning"
 ```
@@ -93,12 +91,11 @@ Using a custom secret-fetching script:
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
         input_artifacts:
-          - "mac/software.app/*"
+          - "mac/software.app"
         sign_prerequisites:
           - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
           - "mac/software.app" 
-        output_artifact:
-          - "mac/**/*"
+
         keychain: "production-certs.keychain"
         keychain_pw_helper_script: "~/fetch-keychain-pw.sh"
         keychain_pw_secret_name: "production-codesigning-keychain-pw"
@@ -124,10 +121,9 @@ This plugin defines hooks for `environment`, `checkout`, `command`, and `post-co
 
 #### Available properties
 
-- `input_artifacts`: String array of artifact paths to download that are required to sign.
-- `sign_prerequisites`: String array of the specific artifact paths to sign. In the case of `.app`s, make sure to list these bottom-up; internal frameworks/helpers first, and `.app` at the end.
-- `output_artifacts`: String array of relevant artifact to upload back to artifacts.
-- `entitlements`: String path of artifact containing entitlements to apply.
+- `input_artifact`: An artifact path to download and sign.
+- `sign_prerequisites`: (optional) String array of the specific artifact paths to sign. If empty, default to `input_artifact`. In the case of `.app`s, make sure to list these bottom-up; internal frameworks/helpers first, and `.app` at the end.
+- `entitlements`: String path of artifact containing a valid entitlements plist to apply.
 - `keychain`: Name of the keychain storing the secrets. (Note: usually requires the .keychain extension)
 - `cert_identity`: Name of the cert to use to sign your artifacts. Should be the "Application" cert, not the "Installer" cert.
 - `keychain_pw_secret_name`: (optional) Name of the password to extract from your preferred secret store (eg: Vault)
