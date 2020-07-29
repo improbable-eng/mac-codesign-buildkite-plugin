@@ -141,13 +141,19 @@ function generate_notarization_config() {
     }' >"${config_path}"
 }
 
+# Handle all the requirements for signing code.
+# Params:
+#   artifact: File to sign+notarize
+#   config_path: Path to gon config
+#   prerequisites: Files to sign before signing final artifact
+#   entitlements: Path to entitlements plist
+#   artifact_dir: Directory where prerequisites are stored.
 function sign_code() {
   local artifact="${1}"
-  local signed_artifact="${2}"
-  local config_path="${3}"
-  local prerequisites="${4}"
-  local entitlements="${5}"
-  local artifact_dir="${6}"
+  local config_path="${2}"
+  local prerequisites="${3}"
+  local entitlements="${4}"
+  local artifact_dir="${5}"
 
   # generate config
   echo "${artifact}: Generating codesigning + notarization config"
@@ -160,12 +166,13 @@ function sign_code() {
     echo "signing+notarization failed: error code '${retval}'"
     exit 5
   fi
-
-  # Move artifacts to signed artifacts
-  mkdir -p "$(dirname "${signed_artifact}")"
-  mv "${artifact}" "${signed_artifact}"
 }
 
+# Handle all the requirements for signing packages.
+# Params:
+#   artifact: pkg file to sign+notarize.
+#   signed_artifact: outputpath of signed pkg.
+#   config_path: Path to gon config
 function sign_pkg() {
   local artifact="${1}"
   local signed_artifact="${2}"
@@ -180,7 +187,7 @@ function sign_pkg() {
   fi
 
   echo "${artifact}: Generating package notarization config"
-  generate_notarization_config "${signed_artifact}"
+  generate_notarization_config "${signed_artifact}" "${config_path}"
 
   echo "${artifact}: notarizing through gon"
   gon "${config_path}"
@@ -248,30 +255,37 @@ if [[ "${artifact}" == *"*"* ]]; then
   exit 5
 fi
 
-## If .app or .framework, handle as a directory.
+# If .app or .framework, handle as a directory.
 if [[ "${artifact}" == *".app" || "${artifact}" == *".framework" ]]; then
   fetch_artifact "${artifact}/**/*" "${artifact_dir_fragment}"
 else
   fetch_artifact "${artifact}" "${artifact_dir_fragment}"
 fi
-artifact="${artifact_dir_fragment}/${artifact}"
+
+unsigned_artifact="${artifact_dir_fragment}/${artifact}"
+signed_artifact="${signed_dir_fragment}/${artifact}"
+
+# Make sure dir structure exists
+mkdir -p "$(dirname "${signed_artifact}")"
 
 config_path="${signed_dir_fragment}/config.json"
+
 prerequisites="$(plugin_read_list SIGN_PREREQUISITES)"
 if [[ -z "${prerequisites}" ]]; then
-  # If no prerequisites specified, simply sign artifact
-  prerequisites="${artifact}"
+  # If no prerequisites are specified, point to the artifact
+  prerequisites="${unsigned_artifact}"
 fi
-
-signed_artifact="${signed_dir_fragment}/${artifact}"
 
 if [[ "${artifact}" == *".pkg" ]]; then
   # PKG files need to be signed with "Developer ID Installer" certs through `productsign`.
   # `gon` only supports "Application" certs, through `codesign`.
   # This steps signs with productsign, and then generates a gon config to notarize it.
-  sign_pkg "${artifact}" "${signed_artifact}" "${config_path}"
+  sign_pkg "${unsigned_artifact}" "${signed_artifact}" "${config_path}"
 else
-  sign_code "${artifact}" "${signed_artifact}" "${config_path}" "${prerequisites}" "${entitlements}" "${artifact_dir_fragment}"
+  sign_code "${unsigned_artifact}" "${config_path}" "${prerequisites}" "${entitlements}" "${artifact_dir_fragment}"
+
+  # codesign is in-place, so move artifacts to signed artifacts
+  mv "${unsigned_artifact}" "${signed_artifact}"
 fi
 
 echo "--- Uploading output artifacts"
