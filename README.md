@@ -53,7 +53,7 @@ Using the `KEYCHAIN_PW` env var:
     - "queue=macos-codesigner"
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
-        input_artifacts:
+        input_artifact:
           - "mac/software.app"
         sign_prerequisites:
           - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
@@ -72,7 +72,7 @@ Using the default Improbable secret-fetching script with `keychain_pw_secret_nam
     - "queue=macos-codesigner"
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
-        input_artifacts:
+        input_artifact:
           - "mac/software.app"
         sign_prerequisites:
           - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
@@ -90,7 +90,7 @@ Using a custom secret-fetching script:
     - "queue=macos-codesigner"
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
-        input_artifacts:
+        input_artifact:
           - "mac/software.app"
         sign_prerequisites:
           - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
@@ -121,9 +121,9 @@ This plugin defines hooks for `environment`, `checkout`, `command`, and `post-co
 
 #### Available properties
 
-- `input_artifact`: An artifact path to download and sign.
+- `input_artifact`: Path of artifact to download, sign, and reupload.
 - `sign_prerequisites`: (optional) String array of the specific artifact paths to sign. If empty, default to `input_artifact`. In the case of `.app`s, make sure to list these bottom-up; internal frameworks/helpers first, and `.app` at the end.
-- `entitlements`: String path of artifact containing a valid entitlements plist to apply.
+- `entitlements`: (optional) Path of artifact containing a valid entitlements plist to apply.
 - `keychain`: Name of the keychain storing the secrets. (Note: usually requires the .keychain extension)
 - `cert_identity`: Name of the cert to use to sign your artifacts. Should be the "Application" cert, not the "Installer" cert.
 - `keychain_pw_secret_name`: (optional) Name of the password to extract from your preferred secret store (eg: Vault)

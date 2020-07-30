@@ -3,10 +3,12 @@ name: MacOS-Codesigner
 description: "Apply code signatures and sign MacOS binaries"
 author: https://github.com/DoomGerbil
 requirements:
-  - security
+# Apple tools
   - altool
   - codesign
   - productsign
+  - security
+# Third party tools
   - gon
   - jq
 configuration:
