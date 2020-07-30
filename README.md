@@ -16,7 +16,7 @@ The required keychain items should also have been allowed access for the relevan
 
 - Signs binaries, dmgs, pkgs, or apps for MacOS.
 - Notarization, with stapling of the notarization ticket.
-- One or more targets can be specified for signing at once.
+- Specifying multiple sub targets to sign. For example: the frameworks in a `.app`.
 - Notarization password can be fetched from keychain.
 - Automatic unlocking/locking of signing keychains.
 - Secrets for unlocking signing certs can be supplied as env vars or fetched from external secret storage (eg Vault).
@@ -31,9 +31,10 @@ The required keychain items should also have been allowed access for the relevan
 Your build agent requires a few things for this to work properly.
 
 1. XCode 11+ must be installed.
-    1. `altool`, `codesign` and `productsign` must be on the $PATH.
+    1. `altool`, `codesign`, and `productsign` must be on the $PATH.
 1. [`gon`](https://github.com/mitchellh/gon) must be installed and on the $PATH. This is the wrapper which handles
 codesigning and notarization.
+1. `jq` must be installed and on the $PATH.
 1. Each item stored in the keychain must have been whitelisted for access by the relevant tool. To do this, double click
 on the restricted keychain item, select the "Access Control" tab, and add the tool to the list of applications
 to "always allow access to". This means that:
@@ -52,8 +53,12 @@ Using the `KEYCHAIN_PW` env var:
     - "queue=macos-codesigner"
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
-        input_artifacts:
-          - "thing.bin"
+        input_artifact:
+          - "mac/software.app"
+        sign_prerequisites:
+          - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
+          - "mac/software.app" 
+
         keychain: "production-certs.keychain"
   env:
         KEYCHAIN_PW: "KeychainPasswordGoesHere"
@@ -67,9 +72,12 @@ Using the default Improbable secret-fetching script with `keychain_pw_secret_nam
     - "queue=macos-codesigner"
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
-        input_artifacts:
-          - "thing.bin"
-          - "another-thing.bin"
+        input_artifact:
+          - "mac/software.app"
+        sign_prerequisites:
+          - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
+          - "mac/software.app" 
+
         keychain: "production-certs.keychain"
         keychain_pw_secret_name: "ci/improbable/production-codesigning"
 ```
@@ -82,9 +90,12 @@ Using a custom secret-fetching script:
     - "queue=macos-codesigner"
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
-        input_artifacts:
-          - "thing.bin"
-          - "another-thing.bin"
+        input_artifact:
+          - "mac/software.app"
+        sign_prerequisites:
+          - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
+          - "mac/software.app" 
+
         keychain: "production-certs.keychain"
         keychain_pw_helper_script: "~/fetch-keychain-pw.sh"
         keychain_pw_secret_name: "production-codesigning-keychain-pw"
@@ -110,17 +121,15 @@ This plugin defines hooks for `environment`, `checkout`, `command`, and `post-co
 
 #### Available properties
 
-- `input_artifacts`: String array of artifact paths to download and sign.
+- `input_artifact`: Path of artifact to download, sign, and reupload.
+- `sign_prerequisites`: (optional) String array of the specific artifact paths to sign. If empty, default to `input_artifact`. In the case of `.app`s, make sure to list these bottom-up; internal frameworks/helpers first, and `.app` at the end.
+- `entitlements`: (optional) Path of artifact containing a valid entitlements plist to apply.
 - `keychain`: Name of the keychain storing the secrets. (Note: usually requires the .keychain extension)
-- `cert_identity`: Name of the cert to use to sign your artifacts. Should be the "Installer" cert for signing
-PKG files, and "Application" cert for anything else.
+- `cert_identity`: Name of the cert to use to sign your artifacts. Should be the "Application" cert, not the "Installer" cert.
 - `keychain_pw_secret_name`: (optional) Name of the password to extract from your preferred secret store (eg: Vault)
 - `keychain_pw_helper_script`: (optional) Custom helper script to obtain the keychain password.
 - `tool_bundle_id`: The apple bundle id to use with your artifacts.
 - `apple_user_email`: The account email for your notarization process. Password should be stored in the keychain at the `apple_password` key.
-- `tool_name`: (optional) The title of the DMG file to produce. If this is not specified, not DMG will be generated. Not relevant to PKG files.
-- `tool_dmg_name`: (optional) The filename of the dmg to create (including the .dmg extension).
-
 
 #### Keychain unlocking
 

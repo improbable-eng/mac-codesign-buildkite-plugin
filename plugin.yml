@@ -3,14 +3,22 @@ name: MacOS-Codesigner
 description: "Apply code signatures and sign MacOS binaries"
 author: https://github.com/DoomGerbil
 requirements:
-  - security
-  - gon
+# Apple tools
+  - altool
   - codesign
   - productsign
+  - security
+# Third party tools
+  - gon
+  - jq
 configuration:
   properties:
-    input_artifacts:
+    input_artifact:
+      type: string
+    sign_prerequisites:
       type: [ string, array ]
+    entitlements:
+      type: string
     keychain:
       type: string
     cert_identity:
@@ -23,12 +31,8 @@ configuration:
       type: string
     apple_user_email:
       type: string
-    tool_name:
-      type: string
-    tool_dmg_name:
-      type: string
   required:
-    - input_artifacts
+    - input_artifact
     - keychain
     - cert_identity
     - tool_bundle_id
