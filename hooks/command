@@ -219,7 +219,7 @@ if [[ -n "${entitlements}" ]]; then
 fi
 
 unsigned_artifact="${artifact_dir_fragment}/${artifact}"
-base_artifact="$(base_name "${artifact}")"
+base_artifact="$(basename "${artifact}")"
 signed_artifact="${signed_dir_fragment}/${base_artifact}"
 
 # Make sure dir structure exists
