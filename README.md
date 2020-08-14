@@ -54,10 +54,10 @@ Using the `KEYCHAIN_PW` env var:
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
         input_artifact:
-          - "mac/software.app"
+          - "mac/software_app.zip"
         sign_prerequisites:
-          - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
-          - "mac/software.app" 
+          - "software.app/Contents/Frameworks/Electron Framework.framework"
+          - "software.app" 
 
         keychain: "production-certs.keychain"
   env:
@@ -73,10 +73,10 @@ Using the default Improbable secret-fetching script with `keychain_pw_secret_nam
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
         input_artifact:
-          - "mac/software.app"
+          - "mac/software_app.zip"
         sign_prerequisites:
-          - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
-          - "mac/software.app" 
+          - "software.app/Contents/Frameworks/Electron Framework.framework"
+          - "software.app"
 
         keychain: "production-certs.keychain"
         keychain_pw_secret_name: "ci/improbable/production-codesigning"
@@ -91,10 +91,10 @@ Using a custom secret-fetching script:
   plugins:
     - improbable-eng/mac-codesign#v0.1.2:
         input_artifact:
-          - "mac/software.app"
+          - "mac/software_app.zip"
         sign_prerequisites:
-          - "mac/software.app/Contents/Frameworks/Electron Framework.framework"
-          - "mac/software.app" 
+          - "software.app/Contents/Frameworks/Electron Framework.framework"
+          - "software.app"
 
         keychain: "production-certs.keychain"
         keychain_pw_helper_script: "~/fetch-keychain-pw.sh"
@@ -112,9 +112,11 @@ This plugin defines hooks for `environment`, `checkout`, `command`, and `post-co
 - `command` does the main work:
   - Unlocks the signing keychain.
   - Fetches the artifact to sign from the BK artifact store.
-    - This can be any one-or-more artifacts created in the same pipeline as this step, and then stored in the BK artifact store.
-  - Signs the binary using the cert in the now-unlocked keychain.
-  - Notarizes the binary using the account credentials in the keychain.
+    - **NOTE**: if you are trying to sign a `.app`, you should zip it with the `.app` in the toplevel of the zip.
+    EG, to sign `myapp.app`, you would want to use `zip -y -r -X myapp.zip myapp.app`, which would leave a toplevel `myapp.app` directory in the zip file.
+    Note that the `-y` to preserve symlinks is a hard requirement, as apple WILL fail notarization if symlinks are tampered with.
+  - Signs the artifact using the cert in the now-unlocked keychain.
+  - Notarizes the artifact using the account credentials in the keychain.
   - Uploads the signed artifact back to BuildKite.
 
 - `post-command` just locks the keychain, regardless of how the rest of the job went.

@@ -128,23 +128,20 @@ function generate_notarization_config() {
 
 # Handle all the requirements for signing code.
 # Params:
-#   artifact: File to sign+notarize
+#   artifact_dir: Directory where prerequisites are stored.
 #   config_path: Path to gon config
 #   prerequisites: Files to sign before signing final artifact
 #   entitlements: Path to entitlements plist
-#   artifact_dir: Directory where prerequisites are stored.
 function sign_code() {
-  local artifact="${1}"
+  local artifact_dir="${1}"
   local config_path="${2}"
   local prerequisites="${3}"
   local entitlements="${4}"
-  local artifact_dir="${5}"
 
-  # generate config
-  echo "${artifact}: Generating codesigning + notarization config"
+  echo "--- Generating signing and notarization config"
   generate_signing_config "${prerequisites}" "${entitlements}" "${artifact_dir}" "${config_path}"
 
-  echo "${artifact}: Executing gon on generated config"
+  echo "--- Signing and notarizing"
   gon "${config_path}"
 }
 
@@ -158,13 +155,13 @@ function sign_pkg() {
   local signed_artifact="${2}"
   local config_path="${3}"
 
-  echo "${artifact}: signing PKG file"
+  echo "--- Signing PKG file"
   productsign --sign "${BUILDKITE_PLUGIN_MAC_CODESIGN_CERT_IDENTITY}" "${artifact}" "${signed_artifact}"
 
-  echo "${artifact}: Generating package notarization config"
+  echo "--- Generating PKG notarization config"
   generate_notarization_config "${signed_artifact}" "${config_path}"
 
-  echo "${artifact}: notarizing through gon"
+  echo "-- Notarizing PKG"
   gon "${config_path}"
 }
 
@@ -202,38 +199,33 @@ rm -rf "${artifact_dir_fragment}" && mkdir -p "${artifact_dir_fragment}"
 
 signed_dir_fragment="signed"
 rm -rf "${signed_dir_fragment}" && mkdir -p "${signed_dir_fragment}"
-# Do not use absolute path to avoid polluting artifact names
-
-# Download entitlements
-entitlements="${BUILDKITE_PLUGIN_MAC_CODESIGN_ENTITLEMENTS:-}"
-if [[ -n "${entitlements}" ]]; then
-  fetch_artifact "${entitlements}" "${artifact_dir_fragment}"
-  entitlements="${artifact_dir_fragment}/${entitlements}"
-fi
 
 ## Download requested artifact
 artifact="${BUILDKITE_PLUGIN_MAC_CODESIGN_INPUT_ARTIFACT}"
-echo "${artifact}: retrieving unsigned artifact"
 
 if [[ "${artifact}" == *"*"* ]]; then
   echo "inputfile artifacts cannot contain wildcards: '${artifact}'"
   exit 5
 fi
 
-# If .app or .framework, handle as a directory.
-if [[ "${artifact}" == *".app" || "${artifact}" == *".framework" ]]; then
-  fetch_artifact "${artifact}/**/*" "${artifact_dir_fragment}"
-else
-  fetch_artifact "${artifact}" "${artifact_dir_fragment}"
+echo "--- Downloading requested artifact: ${artifact}"
+fetch_artifact "${artifact}" "${artifact_dir_fragment}"
+
+entitlements="${BUILDKITE_PLUGIN_MAC_CODESIGN_ENTITLEMENTS:-}"
+if [[ -n "${entitlements}" ]]; then
+  echo "--- Downloading entitlements file"
+  fetch_artifact "${entitlements}" "${artifact_dir_fragment}"
+  entitlements="${artifact_dir_fragment}/${entitlements}"
 fi
 
 unsigned_artifact="${artifact_dir_fragment}/${artifact}"
-signed_artifact="${signed_dir_fragment}/${artifact}"
+base_artifact="$(base_name "${artifact}")"
+signed_artifact="${signed_dir_fragment}/${base_artifact}"
 
 # Make sure dir structure exists
 mkdir -p "$(dirname "${signed_artifact}")"
 
-config_path="${signed_dir_fragment}/config.json"
+config_path="config.json"
 
 prerequisites="$(plugin_read_list SIGN_PREREQUISITES)"
 if [[ -z "${prerequisites}" ]]; then
@@ -241,17 +233,38 @@ if [[ -z "${prerequisites}" ]]; then
   prerequisites="${unsigned_artifact}"
 fi
 
-if [[ "${artifact}" == *".pkg" ]]; then
+echo "--- Signing artifact"
+if [[ "${base_artifact}" == *".pkg" ]]; then
   # PKG files need to be signed with "Developer ID Installer" certs through `productsign`.
   # `gon` only supports "Application" certs, through `codesign`.
   # This steps signs with productsign, and then generates a gon config to notarize it.
+  echo "--- Signing PKG artifact"
   sign_pkg "${unsigned_artifact}" "${signed_artifact}" "${config_path}"
 else
-  sign_code "${unsigned_artifact}" "${config_path}" "${prerequisites}" "${entitlements}" "${artifact_dir_fragment}"
+  if [[ "${base_artifact}" == *".zip" ]]; then
+    echo "--- Unzipping downloaded artifact"
+    unzip "${unsigned_artifact}" -d "${signed_dir_fragment}"
+  fi
 
-  # codesign is in-place, so move artifacts to signed artifacts
-  mv "${unsigned_artifact}" "${signed_artifact}"
+  echo "--- Signing artifact"
+  sign_code "${signed_dir_fragment}" "${config_path}" "${prerequisites}" "${entitlements}"
+
+  if [[ "${base_artifact}" == *".zip" ]]; then
+    # move to dir to avoid weird paths in the zip
+    pushd "${signed_dir_fragment}"
+    echo "--- Zipping signed artifact"
+    # -1 for speed
+    # -y to preserve symlinks
+    # -r for directories
+    # -X to remove .DS_STORE etc
+    zip -1 -y -r -X "${base_artifact}"
+    popd
+  else
+    # Codesign is in place, so move to signed location
+    mv "${unsigned_artifact}" "${signed_artifact}"
+  fi
 fi
 
 echo "--- Uploading output artifacts"
-upload_artifact "${signed_dir_fragment}/**/*"
+upload_artifact "${signed_artifact}"
+upload_artifact "${config_path}"
