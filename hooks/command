@@ -142,11 +142,6 @@ function sign_code() {
   generate_signing_config "${prerequisites}" "${entitlements}" "${artifact_dir}" "${config_path}"
 
   echo "--- Signing and notarizing"
-  ls -hal
-  echo "test end here"
-  echo $base_artifact
-  echo $signed_dir_fragment
-  echo $signed_artifact
   gon "${config_path}"
 }
 
@@ -257,6 +252,9 @@ else
   if [[ "${base_artifact}" == *".zip" ]]; then
     # move to dir to avoid weird paths in the zip
     pushd "${signed_dir_fragment}"
+    echo "pwd: $(pwd)"
+    echo "ls: $(ls -hal)"
+    echo "ls ..: $(ls -hal ..)"
     echo "--- Zipping signed artifact"
     # -1 for speed
     # -y to preserve symlinks
