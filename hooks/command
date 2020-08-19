@@ -22,6 +22,9 @@ function debug() {
    echo "pwd: $(pwd)"
    echo "base_artifact: ${base_artifact}"
    echo "ls signed: $(ls -hal signed/)"
+   echo "signed_artifact: $(signed_artifact)"
+   echo "unsigned_artifact: $(unsigned_artifact)"
+
 }
 # Fetch the artifact and put it in the target dir
 # Params:
@@ -263,7 +266,7 @@ else
     # -y to preserve symlinks
     # -r for directories
     # -X to remove .DS_STORE etc
-    zip -1 -y -r -X "${base_artifact}"
+    zip -1 -y -r -X "${base_artifact}" ${base_artifact::-4}
     popd
   else
     # Codesign is in place, so move to signed location
