@@ -17,15 +17,7 @@ source "${DIR}/../lib/shared.sh"
 codesigning_keychain="${BUILDKITE_PLUGIN_MAC_CODESIGN_KEYCHAIN}"
 script_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 default_keychain_pw_helper_script="${script_root_dir}/../helpers/fetch-keychain-pw.sh"
-function debug() {
-   echo "ls: $(ls -hal)"
-   echo "pwd: $(pwd)"
-   echo "base_artifact: ${base_artifact}"
-   echo "ls signed: $(ls -hal signed/)"
-   echo "signed_artifact: $(signed_artifact)"
-   echo "unsigned_artifact: $(unsigned_artifact)"
 
-}
 # Fetch the artifact and put it in the target dir
 # Params:
 #   fetch_target: Name of the BuildKite artifact to fetch
@@ -260,7 +252,6 @@ else
   if [[ "${base_artifact}" == *".zip" ]]; then
     # move to dir to avoid weird paths in the zip
     pushd "${signed_dir_fragment}"
-    debug
     echo "--- Zipping signed artifact"
     # -1 for speed
     # -y to preserve symlinks
