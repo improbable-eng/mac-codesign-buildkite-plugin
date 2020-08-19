@@ -257,7 +257,7 @@ else
     # -y to preserve symlinks
     # -r for directories
     # -X to remove .DS_STORE etc
-    zip -1 -y -r -X "${base_artifact}"
+    zip -1 -y -r -X "${base_artifact}" ${base_artifact::-4}
     popd
   else
     # Codesign is in place, so move to signed location
