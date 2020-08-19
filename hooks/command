@@ -20,7 +20,8 @@ default_keychain_pw_helper_script="${script_root_dir}/../helpers/fetch-keychain-
 function debug() {
    echo "ls: $(ls -hal)"
    echo "pwd: $(pwd)"
-   echo
+   echo "base_artifact: ${base_artifact}"
+   echo "ls signed: $(ls -hal signed/)"
 }
 # Fetch the artifact and put it in the target dir
 # Params:
