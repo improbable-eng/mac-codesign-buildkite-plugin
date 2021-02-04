@@ -242,17 +242,13 @@ if [[ "${base_artifact}" == *".pkg" ]]; then
   echo "--- Signing PKG artifact"
   sign_pkg "${unsigned_artifact}" "${signed_artifact}" "${config_path}"
 else
-  path_to_sign="${signed_dir_fragment}"
-
   if [[ "${base_artifact}" == *".zip" ]]; then
-    # unzip into a relevant directory
-    path_to_sign="${signed_dir_fragment}/${base_artifact_no_extension}"
-    echo "--- Unzipping downloaded artifact to ${path_to_sign}"
-    unzip "${unsigned_artifact}" -d "${path_to_sign}"
+    echo "--- Unzipping downloaded artifact to ${signed_dir_fragment}"
+    unzip "${unsigned_artifact}" -d "${signed_dir_fragment}"
   fi
 
-  echo "--- Signing artifact: ${path_to_sign}"
-  sign_code "${path_to_sign}" "${config_path}" "${prerequisites}" "${entitlements}"
+  echo "--- Signing artifact: ${signed_artifact}"
+  sign_code "${signed_dir_fragment}" "${config_path}" "${prerequisites}" "${entitlements}"
 
   if [[ "${base_artifact}" == *".zip" ]]; then
     # move to dir to avoid weird paths in the zip
@@ -262,7 +258,8 @@ else
     # -y to preserve symlinks
     # -r for directories
     # -X to remove .DS_STORE etc
-    zip -1 -y -r -X "${base_artifact}" "${base_artifact_no_extension}"
+    # We are in a clean signed dir, so select all directories (also avoids path mangling)
+    zip -1 -y -r -X "${base_artifact}" ./*
     popd
   else
     # Codesign is in place, so move to signed location
