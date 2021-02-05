@@ -233,7 +233,7 @@ if [[ -z "${prerequisites}" ]]; then
   prerequisites="${unsigned_artifact}"
 fi
 
-echo "--- Signing artifact"
+echo "--- Preparing to sign artifact: ${unsigned_artifact}"
 if [[ "${base_artifact}" == *".pkg" ]]; then
   # PKG files need to be signed with "Developer ID Installer" certs through `productsign`.
   # `gon` only supports "Application" certs, through `codesign`.
@@ -242,11 +242,11 @@ if [[ "${base_artifact}" == *".pkg" ]]; then
   sign_pkg "${unsigned_artifact}" "${signed_artifact}" "${config_path}"
 else
   if [[ "${base_artifact}" == *".zip" ]]; then
-    echo "--- Unzipping downloaded artifact"
+    echo "--- Unzipping downloaded artifact to ${signed_dir_fragment}"
     unzip "${unsigned_artifact}" -d "${signed_dir_fragment}"
   fi
 
-  echo "--- Signing artifact"
+  echo "--- Signing artifact: ${signed_artifact}"
   sign_code "${signed_dir_fragment}" "${config_path}" "${prerequisites}" "${entitlements}"
 
   if [[ "${base_artifact}" == *".zip" ]]; then
@@ -257,7 +257,8 @@ else
     # -y to preserve symlinks
     # -r for directories
     # -X to remove .DS_STORE etc
-    zip -1 -y -r -X "${base_artifact}" ${base_artifact::-4}
+    # We are in a clean signed dir, so select all directories (also avoids path mangling)
+    zip -1 -y -r -X "${base_artifact}" ./*
     popd
   else
     # Codesign is in place, so move to signed location
