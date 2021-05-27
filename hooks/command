@@ -60,12 +60,12 @@ function unlock_keychain() {
 # Params:
 #   prerequisites: variable stub to get list of prerequisites from YAML definition
 #   entitlements: path to entitlements file (ignored if empty)
-#   artifacts_dir: root path to relevant artifacts
+#   dir: root path to relevant artifacts
 #   config_path: path to write gon config file to
 function generate_signing_config() {
   local prerequisites="${1}"
   local entitlements="${2}"
-  local artifacts_dir="${3}"
+  local dir="${3}"
   local config_path="${4}"
 
   jq -n \
@@ -87,7 +87,7 @@ function generate_signing_config() {
   echo "${prerequisites}" | while read -r prereq; do
     # iterate over prerequisites, adding them to the codesign config
     local config
-    config="$(jq --arg toSign "${artifacts_dir}/${prereq}" '.source += [$toSign]' "${config_path}")"
+    config="$(jq --arg toSign "${dir}/${prereq}" '.source += [$toSign]' "${config_path}")"
     echo "${config}" >"${config_path}"
   done
 
@@ -128,18 +128,18 @@ function generate_notarization_config() {
 
 # Handle all the requirements for signing code.
 # Params:
-#   artifact_dir: Directory where prerequisites are stored.
+#   dir: Directory where prerequisites are stored.
 #   config_path: Path to gon config
 #   prerequisites: Files to sign before signing final artifact
 #   entitlements: Path to entitlements plist
 function sign_code() {
-  local artifact_dir="${1}"
+  local dir="${1}"
   local config_path="${2}"
   local prerequisites="${3}"
   local entitlements="${4}"
 
   echo "--- Generating signing and notarization config"
-  generate_signing_config "${prerequisites}" "${entitlements}" "${artifact_dir}" "${config_path}"
+  generate_signing_config "${prerequisites}" "${entitlements}" "${dir}" "${config_path}"
 
   echo "--- Signing and notarizing"
   gon "${config_path}"
@@ -230,7 +230,7 @@ config_path="config.json"
 prerequisites="$(plugin_read_list SIGN_PREREQUISITES)"
 if [[ -z "${prerequisites}" ]]; then
   # If no prerequisites are specified, point to the artifact
-  prerequisites="${unsigned_artifact}"
+  prerequisites="${base_artifact}"
 fi
 
 echo "--- Preparing to sign artifact: ${unsigned_artifact}"
@@ -242,11 +242,17 @@ if [[ "${base_artifact}" == *".pkg" ]]; then
   sign_pkg "${unsigned_artifact}" "${signed_artifact}" "${config_path}"
 else
   if [[ "${base_artifact}" == *".zip" ]]; then
-    echo "--- Unzipping downloaded artifact to ${signed_dir_fragment}"
+    echo "--- Unzipping downloaded artifact ${base_artifact} to ${signed_dir_fragment}"
     unzip "${unsigned_artifact}" -d "${signed_dir_fragment}"
+  else
+    echo "--- Moving downloaded artifact ${base_artifact} to ${signed_dir_fragment}"
+    mv "${unsigned_artifact}" "${signed_artifact}"
   fi
 
   echo "--- Signing artifact: ${signed_artifact}"
+  echo "Entitlements:"
+  echo "${entitlements}"
+
   sign_code "${signed_dir_fragment}" "${config_path}" "${prerequisites}" "${entitlements}"
 
   if [[ "${base_artifact}" == *".zip" ]]; then
@@ -260,9 +266,6 @@ else
     # We are in a clean signed dir, so select all directories (also avoids path mangling)
     zip -1 -y -r -X "${base_artifact}" ./*
     popd
-  else
-    # Codesign is in place, so move to signed location
-    mv "${unsigned_artifact}" "${signed_artifact}"
   fi
 fi
 
